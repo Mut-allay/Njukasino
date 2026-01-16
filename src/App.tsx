@@ -12,9 +12,11 @@ const HomePage = lazy(() => import('./routes/HomePage').then(module => ({ defaul
 const MultiplayerLobbyPage = lazy(() => import('./routes/MultiplayerLobbyPage').then(module => ({ default: module.MultiplayerLobbyPage })));
 const CPUGameSetupPage = lazy(() => import('./routes/CPUGameSetupPage').then(module => ({ default: module.CPUGameSetupPage })));
 const GameRoomPage = lazy(() => import('./routes/GameRoomPage').then(module => ({ default: module.GameRoomPage })));
+const LandingPage = lazy(() => import('./pages/LandingPage').then(module => ({ default: module.LandingPage })));
 const RulesPage = lazy(() => import('./routes/RulesPage').then(module => ({ default: module.RulesPage })));
 const NotFoundPage = lazy(() => import('./routes/NotFoundPage').then(module => ({ default: module.NotFoundPage })));
 const AuthPage = lazy(() => import('./routes/AuthPage').then(module => ({ default: module.AuthPage })));
+const SignUpPage = lazy(() => import('./routes/SignUpPage').then(module => ({ default: module.SignUpPage })));
 
 // 🎵 SOUND MANAGER HOOK - Handles all game audio
 const useSoundManager = () => {
@@ -263,13 +265,23 @@ function AppContent({ soundsEnabled, toggleSounds, playSound }: AppContentProps)
 
       <Suspense fallback={<LoadingOverlay isVisible={true} message="Loading..." />}>
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={
+            <>
+              <SignedOut>
+                <LandingPage />
+              </SignedOut>
+              <SignedIn>
+                <HomePage />
+              </SignedIn>
+            </>
+          } />
           <Route path="/multiplayer" element={<MultiplayerLobbyPage />} />
           <Route path="/lobby/:lobbyId" element={<GameRoomPage playSound={playSound} />} />
           <Route path="/cpu" element={<CPUGameSetupPage />} />
           <Route path="/game/:gameId" element={<GameRoomPage playSound={playSound} />} />
           <Route path="/rules" element={<RulesPage />} />
           <Route path="/sign-in" element={<AuthPage />} />
+          <Route path="/sign-up" element={<SignUpPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>

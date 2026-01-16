@@ -1,6 +1,6 @@
-import { SignIn } from "@clerk/clerk-react";
+import { SignUp } from "@clerk/clerk-react";
 
-export const AuthPage = () => {
+export const SignUpPage = () => {
   return (
     <div className="auth-page-container" style={{
       display: 'flex',
@@ -9,7 +9,7 @@ export const AuthPage = () => {
       minHeight: '80vh',
       width: '100%'
     }}>
-      <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" forceRedirectUrl="/" />
+      <SignUp path="/sign-up" routing="path" signInUrl="/sign-in" forceRedirectUrl="/onboarding" />
     </div>
   );
 };
