@@ -1,0 +1,134 @@
+.tutorial-overlay-container {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  pointer-events: none; /* Allow interaction with the table underneath if needed */
+}
+
+.tutorial-glass-card {
+  width: 100%;
+  max-width: 340px;
+  background: linear-gradient(135deg, rgba(30, 45, 60, 0.95), rgba(15, 25, 35, 0.98));
+  border: 1px solid rgba(248, 213, 107, 0.3);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  pointer-events: auto; /* Re-enable for the card itself */
+  animation: slideUpFade 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes slideUpFade {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.tutorial-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.tutorial-icon-box {
+  width: 40px;
+  height: 40px;
+  background: rgba(248, 213, 107, 0.1);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f8d56b;
+  border: 1px solid rgba(248, 213, 107, 0.2);
+}
+
+.tutorial-header h3 {
+  margin: 0;
+  font-size: 1.15em;
+  color: #f8d56b;
+  flex: 1;
+}
+
+.close-tutorial {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 4px;
+  cursor: pointer;
+}
+
+.tutorial-body p {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.95em;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.tutorial-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.step-counter {
+  font-size: 0.75em;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.tutorial-next-btn {
+  background: linear-gradient(135deg, #f8d56b, #d4af37) !important;
+  color: #1a2a3a !important;
+  border: none !important;
+  padding: 10px 18px !important;
+  border-radius: 12px !important;
+  font-weight: 800 !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9em !important;
+  transition: transform 0.2s ease !important;
+  margin: 0 !important;
+}
+
+.tutorial-next-btn:active {
+  transform: scale(0.95);
+}
+
+/* Specific Step Positioning if needed */
+.step-5 .tutorial-overlay-container,
+.step-6 .tutorial-overlay-container {
+  align-items: flex-start;
+  padding-top: 15vh;
+}
+
+/* Animations for table elements (added via GameTable) */
+@keyframes tutorialPulse {
+  0% { box-shadow: 0 0 0 0 rgba(248, 213, 107, 0.7); border-color: #f8d56b; }
+  70% { box-shadow: 0 0 0 15px rgba(248, 213, 107, 0); border-color: #f8d56b; }
+  100% { box-shadow: 0 0 0 0 rgba(248, 213, 107, 0.7); border-color: #f8d56b; }
+}
+
+.tutorial-highlight {
+  animation: tutorialPulse 2s infinite !important;
+  z-index: 2001 !important;
+  position: relative;
+}
+
+@keyframes tutorialBlink {
+  0% { opacity: 0.3; }
+  50% { opacity: 1; color: #f8d56b; }
+  100% { opacity: 0.3; }
+}
+
+.tutorial-blink {
+  animation: tutorialBlink 1.5s infinite !important;
+}

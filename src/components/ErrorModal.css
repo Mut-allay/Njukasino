@@ -1,0 +1,160 @@
+/* Error Modal Styles */
+
+.error-modal .modal-content {
+  max-width: 500px;
+}
+
+.error-content {
+  padding: 0;
+}
+
+.error-message {
+  display: flex;
+  align-items: flex-start;
+  padding: 25px;
+  background: rgba(255, 68, 68, 0.05);
+  border-radius: 10px 10px 0 0;
+}
+
+.error-icon {
+  font-size: 2em;
+  margin-right: 15px;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+
+.error-message p {
+  color: #e0e0e0;
+  margin: 0;
+  line-height: 1.5;
+  flex: 1;
+}
+
+.error-actions {
+  display: flex;
+  gap: 15px;
+  padding: 20px 25px;
+  background: rgba(255, 68, 68, 0.1);
+  border-radius: 0 0 10px 10px;
+  justify-content: center;
+}
+
+.error-retry-button,
+.error-close-button {
+  padding: 12px 24px;
+  border-radius: 25px;
+  font-size: 1em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+  border: 2px solid;
+}
+
+.error-retry-button {
+  background: #ff4444;
+  color: white;
+  border-color: #ff4444;
+}
+
+.error-retry-button:hover {
+  background: #e63939;
+  border-color: #e63939;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 68, 68, 0.3);
+}
+
+.error-retry-button:focus {
+  outline: 2px solid #ff4444;
+  outline-offset: 2px;
+  background: #e63939;
+}
+
+.error-close-button {
+  background: #666;
+  color: white;
+  border-color: #666;
+}
+
+.error-close-button:hover {
+  background: #555;
+  border-color: #555;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 102, 102, 0.3);
+}
+
+.error-close-button:focus {
+  outline: 2px solid #666;
+  outline-offset: 2px;
+  background: #555;
+}
+
+.error-retry-button:active,
+.error-close-button:active {
+  transform: translateY(0);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .error-modal .modal-content {
+    max-width: 95vw;
+  }
+  
+  .error-message {
+    flex-direction: column;
+    text-align: center;
+    padding: 20px;
+  }
+  
+  .error-icon {
+    margin-right: 0;
+    margin-bottom: 10px;
+    font-size: 1.8em;
+  }
+  
+  .error-actions {
+    flex-direction: column;
+    padding: 15px 20px;
+  }
+  
+  .error-retry-button,
+  .error-close-button {
+    width: 100%;
+    padding: 15px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .error-message {
+    background: rgba(255, 68, 68, 0.1);
+    border: 2px solid #ff4444;
+  }
+  
+  .error-actions {
+    background: rgba(255, 68, 68, 0.2);
+  }
+  
+  .error-retry-button,
+  .error-close-button {
+    border-width: 3px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .error-retry-button,
+  .error-close-button {
+    transition: none;
+  }
+  
+  .error-retry-button:hover,
+  .error-close-button:hover {
+    transform: none;
+  }
+  
+  .error-retry-button:active,
+  .error-close-button:active {
+    transform: none;
+  }
+}
