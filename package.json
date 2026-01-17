@@ -12,8 +12,9 @@
     "analyze": "npm run build:analyze && npx vite-bundle-analyzer dist"
   },
   "dependencies": {
-    "@clerk/clerk-react": "^5.59.3",
     "canvas-confetti": "^1.9.4",
+    "firebase": "^10.7.0",
+    "framer-motion": "^12.26.2",
     "howler": "^2.2.4",
     "lucide-react": "^0.544.0",
     "react": "^19.2.0",

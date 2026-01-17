@@ -1,195 +1,263 @@
 import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
-import { Zap, Users, Bot, GraduationCap } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Users, Bot, GraduationCap, Zap, Heart, Shield, Sparkles } from 'lucide-react';
 import { hapticFeedback } from '../utils/haptics';
-import { useGame } from '../contexts/GameContext';
 
 export const LandingPage = () => {
   const navigate = useNavigate();
-  const { startTutorial } = useGame();
 
-  const handleTutorialClick = async () => {
+  const handleGameModeClick = (mode: 'tutorial' | 'multiplayer' | 'cpu') => {
     hapticFeedback('medium');
-    try {
-      const newGameId = await startTutorial();
-      if (newGameId) {
-        navigate(`/game/${newGameId}`);
-      }
-    } catch {
-      // If tutorial fails to start, still try to navigate (backend may handle anonymous players)
-      navigate('/sign-up?mode=tutorial');
+    
+    if (mode === 'tutorial') {
+      // Route to tutorial game without requiring name entry
+      navigate('/game/tutorial');
+    } else if (mode === 'multiplayer' || mode === 'cpu') {
+      // Route to sign-in page
+      navigate('/sign-in');
     }
   };
 
-  const handleMultiplayerClick = () => {
+  const handleSignUp = () => {
     hapticFeedback('medium');
-    navigate('/sign-in');
+    navigate('/sign-up');
   };
 
-  const handleCPUSClick = () => {
-    hapticFeedback('medium');
-    navigate('/sign-in');
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.2,
+        delayChildren: 0.3,
+      },
+    },
   };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] as const },
+    },
+  };
+
+  const featureIcons = [
+    { Icon: Heart, label: 'Thrilling' },
+    { Icon: Shield, label: 'Secure' },
+    { Icon: Sparkles, label: 'Premium' },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white overflow-x-hidden font-sans">
-      {/* Hero Section */}
-      <section className="relative pt-12 pb-20 px-4 overflow-hidden">
-        {/* Background with Overlay */}
-        <div className="absolute inset-0 z-0">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a]/80 via-[#0a0a0a]/60 to-[#0a0a0a] z-10" />
-            <img 
-                src="/images/10013144.jpg" 
-                alt="Casino Background" 
-                className="w-full h-full object-cover opacity-50"
-            />
-        </div>
-
-        <div className="relative z-10 max-w-5xl mx-auto text-center mt-4">
+    <div className="landing-page-container">
+      {/* Hero Section with Background */}
+      <div className="landing-hero-section">
+        <div className="hero-background"></div>
+        <div className="hero-overlay"></div>
+        
+        <motion.div
+          className="hero-content"
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, ease: 'easeOut' }}
+        >
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="hero-title-wrapper"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
           >
-            <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-6 bg-gradient-to-br from-white via-gray-200 to-gray-500 bg-clip-text text-transparent drop-shadow-2xl">
+            <motion.div variants={itemVariants} className="hero-pre-title">
+              Welcome to the Ultimate
+            </motion.div>
+            
+            <motion.h1
+              className="hero-title"
+              variants={itemVariants}
+              animate={{ opacity: 1 }}
+              transition={{
+                duration: 0.8,
+                ease: 'easeOut',
+              }}
+            >
               NJUKA KING
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-300 mb-10 max-w-2xl mx-auto font-light leading-relaxed">
-              Experience the next generation of social card gaming. 
-              <span className="text-yellow-400 font-semibold block mt-2">Fair. Fast. Premium.</span>
-            </p>
+            </motion.h1>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-              <Link 
-                to="/sign-up"
-                className="group relative px-8 py-4 bg-gradient-to-b from-yellow-400 to-yellow-600 rounded-full font-bold text-black text-lg shadow-[0_0_20px_rgba(234,179,8,0.3)] hover:shadow-[0_0_30px_rgba(234,179,8,0.5)] transition-all transform hover:-translate-y-1"
-              >
-                <div className="absolute inset-0 bg-white/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                <span className="relative flex items-center gap-2">
-                   Sign Up & Play <Zap className="w-5 h-5 fill-current" />
-                </span>
-              </Link>
-              
-              <Link 
-                to="/rules"
-                className="px-8 py-4 bg-white/5 border border-white/10 rounded-full font-semibold text-white hover:bg-white/10 transition-all backdrop-blur-sm"
-              >
-                Learn How to Play
-              </Link>
-            </div>
+            <motion.p
+              className="hero-subtitle"
+              variants={itemVariants}
+            >
+              Master the legendary card game. Play solo, challenge friends, or compete globally.
+            </motion.p>
+
+            {/* Feature Pills */}
+            <motion.div
+              className="feature-pills"
+              variants={itemVariants}
+            >
+              {featureIcons.map(({ Icon, label }, idx) => (
+                <motion.div
+                  key={idx}
+                  className="feature-pill"
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Icon size={16} />
+                  <span>{label}</span>
+                </motion.div>
+              ))}
+            </motion.div>
           </motion.div>
-        </div>
-      </section>
+        </motion.div>
+      </div>
 
-      {/* Welcome Section - Matching HomePage Structure */}
-      <section className="py-12 px-4 relative z-10 bg-gradient-to-b from-[#0a0a0a] to-[#0f0f0f]">
-        <div className="page-container home-page max-w-6xl mx-auto">
-          <div className="welcome-section">
-            <div className="header-top">
-              <h2>Welcome to Njuka King!</h2>
-            </div>
-            <div className="live-indicator">
-              <span className="dot"></span>
-              <span>124 Players Online</span>
-            </div>
-          </div>
+      {/* Game Mode Selection */}
+      <motion.div
+        className="landing-game-modes"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.4, ease: 'easeOut' }}
+      >
+        <div className="modes-header">
+          <h2>Choose Your Adventure</h2>
+          <p>Pick how you want to play</p>
         </div>
-      </section>
 
-      {/* Game Mode Selection - Matching HomePage Structure */}
-      <section className="py-12 px-4 relative z-10 bg-gradient-to-b from-[#0f0f0f] to-[#0a0a0a]">
-        <div className="page-container home-page max-w-6xl mx-auto">
-          <div className="new-game-form">
-            <div className="game-cards">
-              <motion.button
-                className="game-card tutorial-card"
-                onClick={handleTutorialClick}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.1, duration: 0.5 }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <div className="card-content">
-                  <div className="icon-box">
-                    <GraduationCap size={40} />
-                  </div>
-                  <div className="text-box">
-                    <div className="title-row">
-                      <h3>Play Tutorial</h3>
-                      <span className="premium-badge">NEW</span>
-                    </div>
-                    <p>Learn the basics step-by-step</p>
-                  </div>
-                  <div className="go-icon">
-                    <Zap size={20} />
-                  </div>
-                </div>
-                <div className="card-decoration"></div>
-              </motion.button>
-
-              <motion.button
-                className="game-card multiplayer-card"
-                onClick={handleMultiplayerClick}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.2, duration: 0.5 }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <div className="card-content">
-                  <div className="icon-box">
-                    <Users size={40} />
-                  </div>
-                  <div className="text-box">
-                    <h3>Multiplayer</h3>
-                    <p>Play with friends online</p>
-                  </div>
-                  <div className="go-icon">
-                    <Zap size={20} />
-                  </div>
-                </div>
-                <div className="card-decoration"></div>
-              </motion.button>
-              
-              <motion.button
-                className="game-card cpu-card"
-                onClick={handleCPUSClick}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.3, duration: 0.5 }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <div className="card-content">
-                  <div className="icon-box">
-                    <Bot size={40} />
-                  </div>
-                  <div className="text-box">
-                    <h3>Practice vs CPU</h3>
-                    <p>Sharpen your skills</p>
-                  </div>
-                  <div className="go-icon">
-                    <Zap size={20} />
-                  </div>
-                </div>
-                <div className="card-decoration"></div>
-              </motion.button>
+        <div className="game-modes-grid">
+          {/* Tutorial Card */}
+          <motion.button
+            className="landing-game-card tutorial-card"
+            onClick={() => handleGameModeClick('tutorial')}
+            whileHover={{ y: -8, scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+          >
+            <div className="card-bg-accent tutorial-accent"></div>
+            <div className="card-inner">
+              <div className="card-icon tutorial-icon">
+                <GraduationCap size={40} />
+              </div>
+              <div className="card-text">
+                <h3>Play Tutorial</h3>
+                <p>Learn the game and master the rules</p>
+                <span className="card-badge">Free to Play</span>
+              </div>
+              <div className="card-arrow">
+                <Zap size={20} />
+              </div>
             </div>
-          </div>
+            <div className="card-border"></div>
+          </motion.button>
+
+          {/* Multiplayer Card */}
+          <motion.button
+            className="landing-game-card multiplayer-card"
+            onClick={() => handleGameModeClick('multiplayer')}
+            whileHover={{ y: -8, scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+          >
+            <div className="card-bg-accent multiplayer-accent"></div>
+            <div className="card-inner">
+              <div className="card-icon multiplayer-icon">
+                <Users size={40} />
+              </div>
+              <div className="card-text">
+                <h3>Multiplayer</h3>
+                <p>Play with friends and climb the ranks</p>
+                <span className="card-badge">Sign In Required</span>
+              </div>
+              <div className="card-arrow">
+                <Zap size={20} />
+              </div>
+            </div>
+            <div className="card-border"></div>
+          </motion.button>
+
+          {/* CPU Practice Card */}
+          <motion.button
+            className="landing-game-card cpu-card"
+            onClick={() => handleGameModeClick('cpu')}
+            whileHover={{ y: -8, scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.7 }}
+          >
+            <div className="card-bg-accent cpu-accent"></div>
+            <div className="card-inner">
+              <div className="card-icon cpu-icon">
+                <Bot size={40} />
+              </div>
+              <div className="card-text">
+                <h3>Practice vs CPU</h3>
+                <p>Hone your skills against AI opponents</p>
+                <span className="card-badge">Sign In Required</span>
+              </div>
+              <div className="card-arrow">
+                <Zap size={20} />
+              </div>
+            </div>
+            <div className="card-border"></div>
+          </motion.button>
         </div>
-      </section>
+      </motion.div>
+
+      {/* CTA Section */}
+      <motion.div
+        className="landing-cta-section"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.8, ease: 'easeOut' }}
+      >
+        <div className="cta-content">
+          <h2>Ready to Become a Legend?</h2>
+          <p>Join thousands of players and master Njuka King today</p>
+          <motion.button
+            className="premium-cta-btn"
+            onClick={handleSignUp}
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            Sign Up & Play
+            <Zap size={18} />
+          </motion.button>
+        </div>
+      </motion.div>
 
       {/* Footer */}
-      <footer className="py-12 border-t border-white/5 bg-black/50 text-center text-gray-500 text-sm relative z-10">
-        <p>&copy; {new Date().getFullYear()} Njuka King. All rights reserved.</p>
-        <div className="mt-4 flex justify-center gap-6">
-            <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
-            <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
-            <Link to="/responsible-gambling" className="hover:text-white transition-colors">Responsible Gambling</Link>
+      <footer className="landing-footer">
+        <div className="footer-content">
+          <div className="footer-section">
+            <h4>About</h4>
+            <p>Njuka King is the premier card game platform where strategy meets thrill.</p>
+          </div>
+          <div className="footer-section">
+            <h4>Quick Links</h4>
+            <ul>
+              <li><a href="/rules">Game Rules</a></li>
+              <li><a href="#features">Features</a></li>
+              <li><a href="#contact">Contact</a></li>
+            </ul>
+          </div>
+          <div className="footer-section">
+            <h4>Community</h4>
+            <p>Join our thriving community of players worldwide.</p>
+          </div>
+        </div>
+        <div className="footer-divider"></div>
+        <div className="footer-bottom">
+          <p>&copy; 2026 Njuka King. All rights reserved.</p>
+          <div className="footer-links">
+            <a href="#privacy">Privacy Policy</a>
+            <span>•</span>
+            <a href="#terms">Terms of Service</a>
+          </div>
         </div>
       </footer>
     </div>

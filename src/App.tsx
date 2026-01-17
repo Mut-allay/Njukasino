@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Howl, Howler } from 'howler';
 import './App.css';
 import { GameProvider, useGame } from './contexts/GameContext';
+import { useAuth } from './contexts/AuthContext';
 import { EnhancedBottomMenu } from './components/EnhancedBottomMenu';
 import LoadingOverlay from './components/LoadingOverlay';
 
@@ -13,6 +13,7 @@ const MultiplayerLobbyPage = lazy(() => import('./routes/MultiplayerLobbyPage').
 const CPUGameSetupPage = lazy(() => import('./routes/CPUGameSetupPage').then(module => ({ default: module.CPUGameSetupPage })));
 const GameRoomPage = lazy(() => import('./routes/GameRoomPage').then(module => ({ default: module.GameRoomPage })));
 const LandingPage = lazy(() => import('./pages/LandingPage').then(module => ({ default: module.LandingPage })));
+const Onboarding = lazy(() => import('./pages/Onboarding').then(module => ({ default: module.Onboarding })));
 const RulesPage = lazy(() => import('./routes/RulesPage').then(module => ({ default: module.RulesPage })));
 const NotFoundPage = lazy(() => import('./routes/NotFoundPage').then(module => ({ default: module.NotFoundPage })));
 const AuthPage = lazy(() => import('./routes/AuthPage').then(module => ({ default: module.AuthPage })));
@@ -226,71 +227,83 @@ interface AppContentProps {
   playSound: (soundType: 'draw' | 'discard' | 'win' | 'button' | 'shuffle') => void;
 }
 
-// Separate component to safely use useGame context
+// Separate component to safely use useGame and useAuth contexts
 function AppContent({ soundsEnabled, toggleSounds, playSound }: AppContentProps) {
   const { playerWallet } = useGame();
+  const { currentUser, loading, logout, userData } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
+
+  // Show loading while auth state is being determined
+  if (loading) {
+    return <LoadingOverlay isVisible={true} message="Loading..." />;
+  }
 
   return (
     <div className="App">
-      <div className="header-section">
-        <h1>Njuka King</h1>
-        
-        {playerWallet !== null && (
-          <div className="global-wallet-pill">
-            <span className="wallet-label">WALLET:</span>
-            <span className="wallet-amount">K{playerWallet.toLocaleString()}</span>
+      {currentUser && (
+        <div className="header-section">
+          <h1>Njuka King</h1>
+          
+          {playerWallet !== null && (
+            <div className="global-wallet-pill">
+              <span className="wallet-label">WALLET:</span>
+              <span className="wallet-amount">K{playerWallet.toLocaleString()}</span>
+            </div>
+          )}
+          
+          <div className="auth-container" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <button
+              onClick={handleLogout}
+              className="logout-button"
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: '#ffd700',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+              }}
+            >
+              Logout
+            </button>
           </div>
-        )}
-        
-        <div className="auth-container" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <SignedOut>
-            <Link to="/sign-in" style={{ 
-              textDecoration: 'none', 
-              color: 'white', 
-              background: 'rgba(255, 255, 255, 0.1)', 
-              padding: '0.5rem 1rem', 
-              borderRadius: '20px',
-              fontSize: '0.9rem',
-              fontWeight: 'bold',
-              border: '1px solid rgba(255, 255, 255, 0.2)'
-            }}>
-              Sign In
-            </Link>
-          </SignedOut>
-          <SignedIn>
-            <UserButton />
-          </SignedIn>
         </div>
-      </div>
+      )}
 
       <Suspense fallback={<LoadingOverlay isVisible={true} message="Loading..." />}>
         <Routes>
           <Route path="/" element={
-            <>
-              <SignedOut>
-                <LandingPage />
-              </SignedOut>
-              <SignedIn>
-                <HomePage />
-              </SignedIn>
-            </>
+            currentUser ? (
+              userData?.onboarded ? <HomePage /> : <Navigate to="/onboarding" />
+            ) : <LandingPage />
           } />
-          <Route path="/multiplayer" element={<MultiplayerLobbyPage />} />
-          <Route path="/lobby/:lobbyId" element={<GameRoomPage playSound={playSound} />} />
-          <Route path="/cpu" element={<CPUGameSetupPage />} />
-          <Route path="/game/:gameId" element={<GameRoomPage playSound={playSound} />} />
+          <Route path="/onboarding" element={currentUser && !userData?.onboarded ? <Onboarding /> : <Navigate to="/" />} />
+          <Route path="/home" element={currentUser && userData?.onboarded ? <HomePage /> : <Navigate to="/" />} />
+          <Route path="/multiplayer" element={currentUser && userData?.onboarded ? <MultiplayerLobbyPage /> : <Navigate to="/sign-in" />} />
+          <Route path="/lobby/:lobbyId" element={currentUser && userData?.onboarded ? <GameRoomPage playSound={playSound} /> : <Navigate to="/sign-in" />} />
+          <Route path="/cpu" element={currentUser && userData?.onboarded ? <CPUGameSetupPage /> : <Navigate to="/sign-in" />} />
+          <Route path="/game/:gameId" element={currentUser && userData?.onboarded ? <GameRoomPage playSound={playSound} /> : <Navigate to="/sign-in" />} />
           <Route path="/rules" element={<RulesPage />} />
-          <Route path="/sign-in" element={<AuthPage />} />
-          <Route path="/sign-up" element={<SignUpPage />} />
+          <Route path="/sign-in" element={currentUser ? <Navigate to="/" /> : <AuthPage />} />
+          <Route path="/sign-up" element={currentUser ? <Navigate to="/" /> : <SignUpPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
 
-      <EnhancedBottomMenu
-        soundsEnabled={soundsEnabled}
-        toggleSounds={toggleSounds}
-        playSound={playSound}
-      />
+      {currentUser && (
+        <EnhancedBottomMenu
+          soundsEnabled={soundsEnabled}
+          toggleSounds={toggleSounds}
+          playSound={playSound}
+        />
+      )}
     </div>
   );
 }
