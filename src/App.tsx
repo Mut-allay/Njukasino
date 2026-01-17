@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Howl, Howler } from 'howler';
 import './App.css';
-import { GameProvider, useGame } from './contexts/GameContext';
+import { GameProvider } from './contexts/GameContext';
 import { useAuth } from './contexts/AuthContext';
 import { EnhancedBottomMenu } from './components/EnhancedBottomMenu';
 import LoadingOverlay from './components/LoadingOverlay';
@@ -123,7 +123,7 @@ const useSoundManager = () => {
     } catch (fallbackError) {
       console.log(`Fallback sound also failed for ${soundType}:`, fallbackError);
     }
-  }, [createFallbackSound, sounds]);
+  }, [createFallbackSound]);
 
   const playSound = useCallback((soundType: keyof typeof sounds) => {
     if (soundsEnabled) {
@@ -148,7 +148,7 @@ const useSoundManager = () => {
         createFallbackSoundForType(soundType);
       }
     }
-  }, [soundsEnabled, sounds, createFallbackSound, createFallbackSoundForType]);
+  }, [soundsEnabled, createFallbackSound, createFallbackSoundForType]);
 
   const toggleSounds = useCallback(() => {
     setSoundsEnabled(prev => {
@@ -229,7 +229,6 @@ interface AppContentProps {
 
 // Separate component to safely use useGame and useAuth contexts
 function AppContent({ soundsEnabled, toggleSounds, playSound }: AppContentProps) {
-  const { playerWallet } = useGame();
   const { currentUser, loading, logout, userData } = useAuth();
 
   const handleLogout = async () => {
@@ -250,13 +249,6 @@ function AppContent({ soundsEnabled, toggleSounds, playSound }: AppContentProps)
       {currentUser && (
         <div className="header-section">
           <h1>Njuka King</h1>
-          
-          {playerWallet !== null && (
-            <div className="global-wallet-pill">
-              <span className="wallet-label">WALLET:</span>
-              <span className="wallet-amount">K{playerWallet.toLocaleString()}</span>
-            </div>
-          )}
           
           <div className="auth-container" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <button

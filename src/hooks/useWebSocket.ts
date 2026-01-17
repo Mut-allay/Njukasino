@@ -74,9 +74,8 @@ export function useWebSocket(
       if (pollingRef.current) {
         clearInterval(pollingRef.current)
       }
-      const currentTimeout = reconnectTimeoutRef.current
-      if (currentTimeout) {
-        clearTimeout(currentTimeout)
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
       }
     }
   }, [])

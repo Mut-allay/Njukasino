@@ -184,7 +184,7 @@ export function useFocusTrap(
     return () => {
       trap.deactivate()
     }
-  }, [options])
+  }, [options, containerRef])
 
   return focusTrap
 }

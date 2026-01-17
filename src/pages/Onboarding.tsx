@@ -88,11 +88,12 @@ export const Onboarding = () => {
       }
 
       return { isValid: true, message: 'Available' };
-    } catch (err: any) {
-      console.error('Username validation error:', err);
+    } catch (err) {
+      const error = err as Error & { code?: string };
+      console.error('Username validation error:', error);
       
       // Handle specific Firebase errors
-      if (err.code === 'permission-denied') {
+      if (error.code === 'permission-denied') {
         return { 
           isValid: false, 
           message: 'Unable to check availability right now. Please try again later.' 
