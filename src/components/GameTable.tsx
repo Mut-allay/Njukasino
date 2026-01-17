@@ -201,7 +201,7 @@ export const GameTable: React.FC<GameTableProps> = ({
       setAnimatingDraw(null)
       // setDrawingCard(false) // ⬅️ REMOVED
     }
-  }, [state, playerName, yourPlayer?.hand.length])
+  }, [state, playerName])
 
   // Trigger shuffle animation at game start
   useEffect(() => {
@@ -412,7 +412,7 @@ export const GameTable: React.FC<GameTableProps> = ({
               {seatPlayers.top.name}
               {seatPlayers.top.is_cpu && " (CPU)"}
             </h3>
-            <span className="player-wallet">K{seatPlayers.top.wallet?.toLocaleString() ?? '10,000'}</span>
+            <span className="player-wallet">K0</span>
           </div>
           <div className="hand horizontal" aria-label={`${seatPlayers.top.name}'s hand with ${seatPlayers.top.hand.length} cards`}>
             {seatPlayers.top.hand.map((card, i) => {
@@ -445,7 +445,7 @@ export const GameTable: React.FC<GameTableProps> = ({
               {seatPlayers.left.name}
               {seatPlayers.left.is_cpu && " (CPU)"}
             </h3>
-            <span className="player-wallet">K{seatPlayers.left.wallet?.toLocaleString() ?? '10,000'}</span>
+            <span className="player-wallet">K0</span>
           </div>
           <div className="hand horizontal" aria-label={`${seatPlayers.left.name}'s hand with ${seatPlayers.left.hand.length} cards`}>
             {seatPlayers.left.hand.map((card, i) => {
@@ -478,7 +478,7 @@ export const GameTable: React.FC<GameTableProps> = ({
               {seatPlayers.right.name}
               {seatPlayers.right.is_cpu && " (CPU)"}
             </h3>
-            <span className="player-wallet">K{seatPlayers.right.wallet?.toLocaleString() ?? '10,000'}</span>
+            <span className="player-wallet">K0</span>
           </div>
           <div className="hand horizontal" aria-label={`${seatPlayers.right.name}'s hand with ${seatPlayers.right.hand.length} cards`}>
             {seatPlayers.right.hand.map((card, i) => {
@@ -553,7 +553,7 @@ export const GameTable: React.FC<GameTableProps> = ({
       >
         <div className="player-header">
           <h4 className="player-name">{yourPlayer.name} (You)</h4>
-          <span className="player-wallet">K{yourPlayer.wallet?.toLocaleString() ?? '10,000'}</span>
+          <span className="player-wallet">K0</span>
         </div>
         <div className="hand" aria-label={`Your hand with ${yourPlayer.hand?.length || 0} cards`}>
           {yourPlayer.hand?.map((card, i) => {

@@ -35,10 +35,6 @@ interface GameContextType {
     quitGame: () => void;
     refreshLobbies: () => Promise<void>;
 
-    // Wallet state
-    playerWallet: number | null;
-    fetchWallet: (name: string) => Promise<void>;
-
     // Tutorial state
     isTutorial: boolean;
     tutorialStep: number;
@@ -90,8 +86,6 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         cpuMoving: false,
     });
 
-    const [playerWallet, setPlayerWallet] = useState<number | null>(null);
-
     // Tutorial state
     const [isTutorial, setIsTutorial] = useState(false);
     const [tutorialStep, setTutorialStep] = useState(0);
@@ -103,24 +97,6 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
 
     // Initialize game service (use useMemo to avoid recreating on every render)
     const gameService = useMemo(() => new GameService(), []);
-
-    const fetchWallet = useCallback(async (name: string) => {
-        try {
-            const data = await gameService.getWallet(name);
-            setPlayerWallet(data.wallet);
-        } catch (error) {
-            console.error('Failed to fetch wallet:', error);
-        }
-    }, [gameService]);
-
-    // Initial wallet fetch and fetch on name change
-    useEffect(() => {
-        if (playerName && playerName.trim()) {
-            fetchWallet(playerName);
-        } else {
-            setPlayerWallet(null);
-        }
-    }, [playerName, fetchWallet]);
 
     // WebSocket connection for lobby room updates
     const lobbyIdForWS = lobby?.id;
@@ -199,20 +175,6 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
             };
         }
     }, [gameStateIdForWS, gameState?.mode, playerName]);
-    
-    // ⬇️ SYNC WALLET FROM GAME STATE
-    // This ensures that the global wallet pill (UI) refreshes when the backend deducts fees or awards winnings.
-    useEffect(() => {
-        if (gameState && playerName) {
-            const playerNameToMatch = playerName.trim().toLowerCase();
-            const currentPlayer = gameState.players.find(p => p.name.trim().toLowerCase() === playerNameToMatch);
-            
-            if (currentPlayer && currentPlayer.wallet !== undefined && currentPlayer.wallet !== playerWallet) {
-                console.log(`[GameContext] Syncing wallet from game state: ${currentPlayer.wallet} (Player: ${currentPlayer.name})`);
-                setPlayerWallet(currentPlayer.wallet);
-            }
-        }
-    }, [gameState, playerName, playerWallet]);
 
     // Combined polling fallback for both Lobby and Game states
     useEffect(() => {
@@ -263,7 +225,7 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         }, 3000); // Poll every 3 seconds for better reliability
 
         return () => clearInterval(interval);
-    }, [lobby, gameId, gameWS, gameState, gameService]);
+    }, [lobby, gameId, gameWS, gameState, gameService, playerName]);
 
     // Game actions
     const createLobby = useCallback(async (numPlayers: number, entryFee: number = 0) => {
@@ -437,12 +399,7 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         setLobby(null);
         setGameId(null);
         setError(null);
-
-        // Refresh wallet to ensure consistent state on Home/Lobby pages
-        if (playerName) {
-            fetchWallet(playerName);
-        }
-    }, [gameWS, lobbyWS, playerName, fetchWallet]);
+    }, [gameWS, lobbyWS]);
 
     const refreshLobbies = useCallback(async () => {
         try {
@@ -495,8 +452,6 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         discardCard,
         quitGame,
         refreshLobbies,
-        playerWallet,
-        fetchWallet,
         gameService,
         isTutorial,
         tutorialStep,

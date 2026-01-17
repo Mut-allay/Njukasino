@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import random
@@ -8,9 +8,52 @@ from fastapi.responses import JSONResponse
 from datetime import datetime, timedelta
 import logging
 import json
+import os
+import requests
+from os import getenv
+
+# Firebase Admin SDK imports
+from firebase_admin import credentials, firestore, initialize_app
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# ====================== FIREBASE INITIALIZATION ======================
+try:
+    firebase_service_account_json = getenv("FIREBASE_SERVICE_ACCOUNT")
+    if not firebase_service_account_json:
+        raise ValueError("FIREBASE_SERVICE_ACCOUNT not set in .env")
+    
+    cred = credentials.Certificate(json.loads(firebase_service_account_json))
+    initialize_app(cred)
+    db = firestore.client()
+    logger.info("✅ Firebase Admin SDK initialized successfully")
+except Exception as e:
+    logger.error(f"❌ Firebase initialization failed: {e}")
+    db = None
+
+# ====================== LENCO CONFIGURATION ======================
+LENCO_BASE_URL = "https://api.lenco.co/access/v2"
+LENCO_API_KEY = getenv("LENCO_API_KEY")
+if not LENCO_API_KEY:
+    logger.warning("⚠️  LENCO_API_KEY not set in .env - deposit features will not work")
+else:
+    logger.info(f"✅ LENCO_API_KEY loaded (starts with {LENCO_API_KEY[:10]}...)")
+
+# ====================== REQUEST MODELS ======================
+class DepositInitiateRequest(BaseModel):
+    amount: float
+    phone: str
+    operator: str  # "airtel" | "mtn"
+    reference: str = None  # Will be auto-generated if not provided
+    uid: str = None  # Firebase user ID
+
+class DepositVerifyRequest(BaseModel):
+    reference: str
+    otp: str
+    uid: str = None
+
+# ====================== GAME CONFIGURATION ======================
 
 suits = ['♠', '♥', '♦', '♣']
 values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
@@ -84,18 +127,6 @@ async def global_exception_handler(request, exc):
 
 active_games: Dict[str, GameState] = {}
 active_lobbies: Dict[str, LobbyGame] = {}
-
-# In-memory wallet storage
-player_wallets: Dict[str, int] = {}
-INITIAL_WALLET = 10000
-
-def get_player_wallet(name: str) -> int:
-    if name not in player_wallets:
-        player_wallets[name] = INITIAL_WALLET
-    return player_wallets[name]
-
-class UpdateWalletRequest(BaseModel):
-    amount: int
 
 class ConnectionManager:
     def __init__(self):
@@ -171,17 +202,8 @@ def new_game_state(mode: str, player_names: List[str], max_players: int = 4, ent
     players = []
 
     for name in player_names:
-        wallet = get_player_wallet(name)
-        if wallet < entry_fee:
-            # We should have checked this before calling new_game_state, 
-            # but as a safety measure:
-            logger.warning(f"Insufficient funds for {name}: {wallet} < {entry_fee}")
-        
-        if deduct_fees:
-            player_wallets[name] -= entry_fee
-            logger.info(f"Deducted {entry_fee} from {name}. New balance: {player_wallets[name]}")
-        
-        players.append(Player(name=name, hand=[], wallet=player_wallets[name]))
+        # All players start with wallet 0
+        players.append(Player(name=name, hand=[], wallet=0))
 
     if mode == "cpu":
         cpu_to_add = max_players - len(players)
@@ -227,11 +249,7 @@ async def create_lobby(request: CreateLobbyRequest):
     if not (2 <= request.max_players <= 4):
         raise HTTPException(status_code=400, detail="Max players must be 2-4")
 
-    # Initial wallet check for host
-    wallet = get_player_wallet(request.host)
-    if wallet < request.entry_fee:
-        raise HTTPException(status_code=400, detail=f"Insufficient funds. Required: K{request.entry_fee}, Available: K{wallet}")
-
+    # Allow lobby creation regardless of wallet (wallet = 0 for all players)
     lobby_id = str(uuid.uuid4())
     lobby = LobbyGame(
         id=lobby_id,
@@ -246,17 +264,228 @@ async def create_lobby(request: CreateLobbyRequest):
     logger.info(f"Lobby created: {lobby_id} by {request.host} with fee K{request.entry_fee}")
     return lobby.dict()
 
-@app.get("/wallet/{player_name}")
-async def get_wallet(player_name: str):
-    wallet = get_player_wallet(player_name)
-    return {"wallet": wallet}
+# ====================== DEPOSIT ENDPOINTS (LENCO) ======================
 
-@app.post("/wallet/{player_name}")
-async def update_wallet(player_name: str, request: UpdateWalletRequest):
-    if player_name not in player_wallets:
-        player_wallets[player_name] = INITIAL_WALLET
-    player_wallets[player_name] += request.amount
-    return {"wallet": player_wallets[player_name]}
+@app.post("/deposit/initiate")
+async def initiate_deposit(data: DepositInitiateRequest = Body(...)):
+    """
+    Initiate a mobile money deposit with Lenco.
+    Returns {reference, status, message}
+    """
+    if not LENCO_API_KEY or not db:
+        raise HTTPException(status_code=503, detail="Deposit service unavailable. Firebase or Lenco not configured.")
+    
+    # Generate reference if not provided
+    reference = data.reference or str(uuid.uuid4())
+    
+    try:
+        # Call Lenco API to initiate deposit
+        headers = {
+            "Authorization": f"Bearer {LENCO_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+        lenco_payload = {
+            "reference": reference,
+            "amount": int(data.amount),
+            "phone": data.phone,
+            "operator": data.operator.lower()  # "airtel" or "mtn"
+        }
+        
+        logger.info(f"Initiating Lenco deposit: reference={reference}, amount={data.amount}, phone={data.phone}")
+        
+        response = requests.post(
+            f"{LENCO_BASE_URL}/collections/mobile-money/initiate",
+            json=lenco_payload,
+            headers=headers,
+            timeout=10
+        )
+        
+        if response.status_code != 200:
+            error_detail = response.json().get("message", "Unknown error from Lenco")
+            logger.error(f"Lenco initiate failed: {response.status_code} - {error_detail}")
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=f"Deposit initiation failed: {error_detail}"
+            )
+        
+        result = response.json()
+        logger.info(f"Lenco initiate success: {result}")
+        
+        return {
+            "reference": reference,
+            "status": result.get("data", {}).get("status", "pending"),
+            "message": "OTP sent to your phone",
+            "user_id": data.uid or "unknown"
+        }
+        
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Request error during deposit initiation: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Failed to reach Lenco service. Please try again later."
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error during deposit initiation: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred. Please try again."
+        )
+
+@app.post("/deposit/verify")
+async def verify_deposit(data: DepositVerifyRequest = Body(...)):
+    """
+    Verify OTP and complete deposit.
+    Updates user's wallet in Firestore on success.
+    """
+    if not LENCO_API_KEY or not db:
+        raise HTTPException(status_code=503, detail="Deposit service unavailable. Firebase or Lenco not configured.")
+    
+    try:
+        # Call Lenco API to verify OTP
+        headers = {
+            "Authorization": f"Bearer {LENCO_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+        lenco_payload = {
+            "reference": data.reference,
+            "otp": data.otp
+        }
+        
+        logger.info(f"Verifying Lenco deposit: reference={data.reference}")
+        
+        response = requests.post(
+            f"{LENCO_BASE_URL}/collections/mobile-money/submit-otp",
+            json=lenco_payload,
+            headers=headers,
+            timeout=10
+        )
+        
+        if response.status_code != 200:
+            error_detail = response.json().get("message", "Verification failed")
+            logger.error(f"Lenco verify failed: {response.status_code} - {error_detail}")
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=f"Invalid OTP or reference: {error_detail}"
+            )
+        
+        result = response.json()
+        deposit_data = result.get("data", {})
+        
+        # Check if deposit was successful
+        if deposit_data.get("status") != "successful":
+            logger.warning(f"Deposit not successful: status={deposit_data.get('status')}")
+            raise HTTPException(
+                status_code=400,
+                detail="Deposit verification failed. Please try again."
+            )
+        
+        amount = float(deposit_data.get("amount", 0))
+        phone = deposit_data.get("phone", "")
+        
+        logger.info(f"Lenco verify success: amount={amount}, phone={phone}")
+        
+        # Update user's wallet in Firestore
+        uid = data.uid
+        if uid:
+            try:
+                user_ref = db.collection("users").document(uid)
+                user_ref.update({
+                    "wallet": firestore.Increment(amount),
+                    "last_deposit": datetime.now(),
+                    "last_deposit_reference": data.reference
+                })
+                logger.info(f"User {uid} wallet updated: +K{amount}")
+            except Exception as e:
+                logger.error(f"Failed to update wallet in Firestore for {uid}: {e}")
+                # Don't fail the entire operation, deposit was successful
+        else:
+            logger.warning(f"No uid provided for deposit {data.reference}. Wallet not updated in Firestore.")
+        
+        return {
+            "reference": data.reference,
+            "status": "successful",
+            "amount": amount,
+            "message": f"Deposit of K{amount} completed successfully",
+            "user_id": uid or "unknown"
+        }
+        
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Request error during deposit verification: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Failed to reach Lenco service. Please try again later."
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error during deposit verification: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred. Please try again."
+        )
+
+@app.post("/webhook/lenco")
+async def lenco_webhook(payload: dict = Body(...)):
+    """
+    Webhook endpoint for async Lenco callbacks.
+    Lenco will POST to this endpoint when a transaction completes.
+    """
+    try:
+        logger.info(f"Lenco webhook received: {payload}")
+        
+        reference = payload.get("reference")
+        status = payload.get("status")
+        amount = payload.get("amount")
+        
+        if status == "successful" and reference and amount:
+            # You could store this in a database or trigger additional logic
+            logger.info(f"Webhook: Deposit {reference} successful for K{amount}")
+        
+        # Always return 200 OK to acknowledge webhook
+        return {"status": "received"}
+        
+    except Exception as e:
+        logger.error(f"Error processing Lenco webhook: {e}")
+        # Still return 200 OK - webhook should not retry on error
+        return {"status": "received", "error": str(e)}
+
+@app.get("/wallet/{player_name}")
+async def get_wallet(player_name: str, uid: str = None):
+    """
+    Fetch player's wallet balance from Firestore.
+    If uid is provided, use it directly. Otherwise, search by player_name.
+    Falls back to 0 if user not found or Firestore unavailable.
+    """
+    if not db:
+        logger.warning("Firestore not available, returning wallet=0")
+        return {"wallet": 0}
+    
+    try:
+        if uid:
+            # Direct lookup by uid (more efficient)
+            user_doc = db.collection("users").document(uid).get()
+            if user_doc.exists:
+                wallet = user_doc.get("wallet", 0)
+                logger.info(f"Wallet for uid {uid}: K{wallet}")
+                return {"wallet": wallet}
+        else:
+            # Search by player name
+            users = db.collection("users").where("name", "==", player_name).limit(1).stream()
+            for user_doc in users:
+                wallet = user_doc.get("wallet", 0)
+                logger.info(f"Wallet for player {player_name}: K{wallet}")
+                return {"wallet": wallet}
+        
+        # User not found, return default 0
+        logger.info(f"Player {player_name} not found in Firestore, returning wallet=0")
+        return {"wallet": 0}
+        
+    except Exception as e:
+        logger.error(f"Error fetching wallet for {player_name or uid}: {e}")
+        # Fail gracefully - return 0 instead of error
+        return {"wallet": 0}
 
 @app.post("/lobby/{lobby_id}/join")
 async def join_lobby(lobby_id: str, request: JoinLobbyRequest):
@@ -275,11 +504,6 @@ async def join_lobby(lobby_id: str, request: JoinLobbyRequest):
             "game": game.dict() if game else None
         })
 
-    # Wallet check
-    wallet = get_player_wallet(player_name)
-    if wallet < lobby.entry_fee:
-        raise HTTPException(status_code=400, detail=f"Insufficient funds. Required: K{lobby.entry_fee}, Available: K{wallet}")
-
     if len(lobby.players) >= lobby.max_players:
         raise HTTPException(status_code=400, detail="Lobby is full")
 
@@ -290,8 +514,8 @@ async def join_lobby(lobby_id: str, request: JoinLobbyRequest):
     # START GAME ONLY WHEN FULL
     if len(lobby.players) == lobby.max_players:
         logger.info(f"Lobby {lobby_id} full ({len(lobby.players)}/{lobby.max_players}). Starting game.")
-        # Deduct fees from ALL players when the game actually starts
-        game_state = new_game_state("multiplayer", lobby.players, max_players=lobby.max_players, entry_fee=lobby.entry_fee, deduct_fees=True)
+        # No fee deductions - all players have wallet = 0
+        game_state = new_game_state("multiplayer", lobby.players, max_players=lobby.max_players, entry_fee=lobby.entry_fee, deduct_fees=False)
         active_games[game_state.id] = game_state
         lobby.game_id = game_state.id
         lobby.started = True
@@ -327,14 +551,11 @@ async def list_lobbies():
 async def create_cpu_game(player_name: str = "Player", cpu_count: int = 1, entry_fee: int = 0):
     if not (1 <= cpu_count <= 3):
         raise HTTPException(status_code=400, detail="CPU count must be between 1 and 3")
-    # Wallet check
-    wallet = get_player_wallet(player_name)
-    if wallet < entry_fee:
-        raise HTTPException(status_code=400, detail=f"Insufficient funds. Required: K{entry_fee}, Available: K{wallet}")
-
+    
+    # No wallet checks - all players have wallet = 0
     # In CPU mode, max_players should be human(1) + cpu_count
     actual_max_players = cpu_count + 1
-    game = new_game_state("cpu", [player_name], max_players=actual_max_players, entry_fee=entry_fee, deduct_fees=True)
+    game = new_game_state("cpu", [player_name], max_players=actual_max_players, entry_fee=entry_fee, deduct_fees=False)
     active_games[game.id] = game
     return game.dict()
 
@@ -363,14 +584,8 @@ async def draw_card(game_id: str):
         game.winner = winner
         game.winner_hand = hand
         game.game_over = True
-        # Award pot to winner
-        player_wallets[winner] += game.pot_amount
-        # Sync winner's wallet in the game state
-        for p in game.players:
-            if p.name == winner:
-                p.wallet = player_wallets[winner]
-                break
-        logger.info(f"Winner: {winner} awarded pot: {game.pot_amount}. New wallet: {player_wallets[winner]}")
+        # No wallet earnings - all players have wallet = 0
+        logger.info(f"Winner: {winner}. Game over.")
 
     await manager.broadcast_game_update(game_id, game)
     return game.dict()
@@ -397,14 +612,8 @@ async def discard_card(game_id: str, card_index: int = Query(...)):
         game.winner = winner
         game.winner_hand = hand
         game.game_over = True
-        # Award pot to winner
-        player_wallets[winner] += game.pot_amount
-        # Sync winner's wallet in the game state
-        for p in game.players:
-            if p.name == winner:
-                p.wallet = player_wallets[winner]
-                break
-        logger.info(f"Winner: {winner} awarded pot: {game.pot_amount}. New wallet: {player_wallets[winner]}")
+        # No wallet earnings - all players have wallet = 0
+        logger.info(f"Winner: {winner}. Game over.")
     else:
         game.current_player = (game.current_player + 1) % len(game.players)
 
