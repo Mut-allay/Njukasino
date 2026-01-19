@@ -24,6 +24,7 @@ interface UserData {
   onboardedAt?: string;
   createdAt?: string;
   email?: string;
+  wallet?: number;
 }
 
 interface AuthContextType {
@@ -93,9 +94,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [currentUser?.uid]);
 
   const formatFakeEmail = (phone: string) => {
-    // Remove non-numeric characters except +
-    const cleaned = phone.replace(/[^0-9+]/g, '');
-    return `${cleaned}@njuka.app`;
+    // Remove all non-alphanumeric characters
+    const cleaned = phone.replace(/[^0-9]/g, '');
+    // Ensure phone doesn't start with +, create valid email
+    return `phone_${cleaned}@njuka-auth.local`;
   };
 
   const signUpWithPhonePassword = async (
@@ -116,7 +118,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         lastName: lastName || '',
         createdAt: new Date().toISOString(),
         email: fakeEmail,
-        onboarded: false
+        onboarded: false,
+        wallet: 0
       });
 
       return userCredential;
@@ -149,14 +152,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signInWithPhonePassword = async (phone: string, password: string) => {
     setError(null);
     try {
+      // Validate phone and password
+      if (!phone || !password) {
+        setError('Phone number and password are required.');
+        return null;
+      }
+
+      if (!/^\d{10,}$/.test(phone.replace(/\D/g, ''))) {
+        setError('Invalid phone number format.');
+        return null;
+      }
+
       const fakeEmail = formatFakeEmail(phone);
       const userCredential = await signInWithEmailAndPassword(auth, fakeEmail, password);
       return userCredential;
     } catch (err) {
       if (err instanceof FirebaseError) {
+        console.error(`FirebaseError [${err.code}]:`, err.message);
         switch (err.code) {
           case 'auth/user-not-found':
+            setError('This phone number is not registered. Please sign up first.');
+            break;
           case 'auth/wrong-password':
+            setError('Incorrect password. Please try again.');
+            break;
+          case 'auth/invalid-credential':
             setError('Invalid phone number or password.');
             break;
           case 'auth/invalid-email':
@@ -166,7 +186,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setError('Too many failed attempts. Please try again later.');
             break;
           default:
-            setError('An error occurred during sign in. Please try again.');
+            setError(`Authentication error: ${err.code}. Please try again.`);
         }
       } else {
         setError('An unexpected error occurred.');
