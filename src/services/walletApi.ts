@@ -2,7 +2,8 @@
  * Lipila wallet API: balance, deposit (MoMo/card), withdraw (MoMo), transaction status.
  * Uses Bearer token from Firebase auth.currentUser.getIdToken().
  */
-import axios, { AxiosInstance } from 'axios';
+import axios from 'axios';
+import type { AxiosInstance } from 'axios';
 
 const API = import.meta.env.VITE_API_URL || 'https://njuka-webapp-backend.onrender.com';
 const PAYMENTS_BASE = `${API.replace(/\/$/, '')}/api/payments`;

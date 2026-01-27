@@ -151,7 +151,7 @@ const useSoundManager = () => {
         createFallbackSoundForType(soundType);
       }
     }
-  }, [soundsEnabled, createFallbackSound, createFallbackSoundForType]);
+  }, [soundsEnabled, sounds, createFallbackSoundForType]);
 
   const toggleSounds = useCallback(() => {
     setSoundsEnabled(prev => {

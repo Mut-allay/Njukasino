@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../config/firebase';
 import { createWalletApi } from '../services/walletApi';
@@ -26,7 +26,7 @@ export const WalletPage = () => {
     return createWalletApi(getToken);
   }, []);
 
-  const fetchBalance = async () => {
+  const fetchBalance = useCallback(async () => {
     if (!currentUser) return;
     setLoadingBalance(true);
     try {
@@ -39,11 +39,11 @@ export const WalletPage = () => {
     } finally {
       setLoadingBalance(false);
     }
-  };
+  }, [currentUser, walletApi, userData]);
 
   useEffect(() => {
     fetchBalance();
-  }, [currentUser?.uid]);
+  }, [fetchBalance]);
 
   const displayBalance = balance ?? (userData?.wallet_balance ?? (userData as { wallet?: number })?.wallet ?? 0);
   const defaultPhone = currentUser?.phoneNumber ?? (userData as { phone?: string })?.phone ?? '';

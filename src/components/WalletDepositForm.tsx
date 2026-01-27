@@ -86,7 +86,6 @@ export function WalletDepositForm({
   });
 
   const amount = watch('amount');
-  const phone = watch('phone');
   const cardNumber = watch('card_number') ?? '';
   const expiryMonth = watch('expiry_month') ?? '';
   const expiryYear = watch('expiry_year') ?? '';
@@ -106,7 +105,7 @@ export function WalletDepositForm({
       if (method === 'momo') {
         const res = await onDepositMomo({
           amount: amountNum,
-          phone: normalizePhone(data.phone),
+          phone: normalizePhone(data.phone ?? ''),
         });
         onSuccess(res.message || 'Deposit initiated. Confirm on your phone.');
       } else {

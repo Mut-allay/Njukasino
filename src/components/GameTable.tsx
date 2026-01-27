@@ -190,7 +190,7 @@ export const GameTable: React.FC<GameTableProps> = ({
       }
       prevHandLengths.current[player.name] = currentLength
     })
-  }, [state.players, playerName, getRelativePos, getSeatPos])
+  }, [state.players, playerName, yourPlayer?.hand.length, getRelativePos, getSeatPos])
 
   useEffect(() => {
     if (state?.current_player !== state?.players.findIndex((p) => p?.name === playerName)) {

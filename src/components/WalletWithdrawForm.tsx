@@ -12,18 +12,12 @@ function normalizePhone(phone: string): string {
   return phone.trim();
 }
 
-const withdrawSchema = z.object({
-  amount: z.coerce.number().min(0.01, 'Amount must be greater than 0'),
+const makeWithdrawSchema = (balance: number) => z.object({
+  amount: z.coerce.number().min(0.01, 'Amount must be greater than 0').max(balance, 'Amount exceeds available balance'),
   phone: z.string().min(9, 'Phone required').refine((v) => phoneRegex.test(normalizePhone(v)), 'Use +260xxxxxxxxx'),
-}).refine(
-  (data, ctx) => {
-    const max = (ctx as { balance?: number }).balance ?? 0;
-    return data.amount <= max;
-  },
-  { message: 'Amount exceeds available balance', path: ['amount'] }
-);
+});
 
-type WithdrawFormValues = z.infer<typeof withdrawSchema>;
+type WithdrawFormValues = z.infer<ReturnType<typeof makeWithdrawSchema>>;
 
 interface WalletWithdrawFormProps {
   balance: number;
