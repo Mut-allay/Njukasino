@@ -16,6 +16,10 @@ from dotenv import load_dotenv
 load_dotenv()
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
+# Add current directory to Python path for imports to work from any location
+import sys
+sys.path.insert(0, os.path.dirname(__file__))
+
 from routers import payments as payments_router
 from firebase_admin import credentials, firestore, initialize_app
 
