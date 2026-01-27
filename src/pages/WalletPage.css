@@ -1,0 +1,296 @@
+/* Casino-themed: dark bg, gold accents */
+.wallet-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  padding: 2rem 1rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.wallet-page-card {
+  background: linear-gradient(145deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.98) 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 215, 0, 0.05);
+  max-width: 440px;
+  width: 100%;
+  padding: 1.75rem;
+  animation: walletSlideUp 0.35s ease-out;
+}
+
+@keyframes walletSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.wallet-page-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #ffd700;
+  margin: 0 0 1.25rem 0;
+}
+
+.wallet-page-title svg {
+  flex-shrink: 0;
+}
+
+.wallet-balance-box {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.wallet-balance-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.wallet-balance-amount {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #ffd700;
+  letter-spacing: 0.02em;
+}
+
+.wallet-spinner {
+  color: #ffd700;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.wallet-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.wallet-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  background: rgba(255, 215, 0, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wallet-tab-btn:hover {
+  background: rgba(255, 215, 0, 0.12);
+  border-color: rgba(255, 215, 0, 0.5);
+  color: #ffd700;
+}
+
+.wallet-tab-btn.active {
+  background: rgba(255, 215, 0, 0.2);
+  border-color: #ffd700;
+  color: #ffd700;
+}
+
+/* Form sections (shared with WalletDepositForm / WalletWithdrawForm when used in this page) */
+.wallet-page .wallet-form-section {
+  margin-bottom: 1.25rem;
+}
+
+.wallet-page .wallet-label {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+}
+
+.wallet-page .wallet-input {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  color: #fff;
+}
+
+.wallet-page .wallet-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.wallet-page .wallet-quick-amounts .wallet-quick-btn {
+  background: rgba(255, 215, 0, 0.15);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  color: #ffd700;
+}
+
+.wallet-page .wallet-quick-amounts .wallet-quick-btn:hover {
+  background: rgba(255, 215, 0, 0.25);
+  border-color: #ffd700;
+}
+
+.wallet-page .wallet-method-tabs .wallet-tab {
+  background: rgba(255, 215, 0, 0.08);
+  border-color: rgba(255, 215, 0, 0.3);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.wallet-page .wallet-method-tabs .wallet-tab.active {
+  background: rgba(255, 215, 0, 0.2);
+  border-color: #ffd700;
+  color: #ffd700;
+}
+
+.wallet-page .wallet-btn-primary {
+  background: linear-gradient(135deg, #d4af37 0%, #ffd700 50%, #d4af37 100%);
+  color: #1a1a2e;
+  border: none;
+  font-weight: 700;
+}
+
+.wallet-page .wallet-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: 0 4px 20px rgba(255, 215, 0, 0.35);
+}
+
+.wallet-page .wallet-hint {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.8rem;
+}
+
+.wallet-page .wallet-error {
+  color: #ff6b6b;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0;
+}
+
+/* Base form layout (used by deposit/withdraw forms) */
+.wallet-deposit-form .wallet-form-section,
+.wallet-withdraw-form .wallet-form-section {
+  margin-bottom: 1.25rem;
+}
+
+.wallet-deposit-form .wallet-label,
+.wallet-withdraw-form .wallet-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+}
+
+.wallet-deposit-form .wallet-input-wrap,
+.wallet-withdraw-form .wallet-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+}
+
+.wallet-deposit-form .wallet-input,
+.wallet-withdraw-form .wallet-input {
+  flex: 1;
+  padding: 0.65rem 0.9rem;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.wallet-deposit-form .wallet-input.small,
+.wallet-withdraw-form .wallet-input.small {
+  max-width: 4rem;
+}
+
+.wallet-deposit-form .wallet-currency,
+.wallet-withdraw-form .wallet-currency {
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+}
+
+.wallet-deposit-form .wallet-quick-amounts,
+.wallet-withdraw-form .wallet-quick-amounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.wallet-deposit-form .wallet-quick-btn,
+.wallet-withdraw-form .wallet-quick-btn {
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.wallet-deposit-form .wallet-method-tabs,
+.wallet-withdraw-form .wallet-method-tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.wallet-deposit-form .wallet-tab,
+.wallet-withdraw-form .wallet-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  border-radius: 8px;
+  border: 1px solid;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.wallet-deposit-form .wallet-card-fields .wallet-card-row {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.wallet-deposit-form .wallet-expiry,
+.wallet-withdraw-form .wallet-expiry {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.wallet-deposit-form .wallet-sep {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.wallet-deposit-form .wallet-btn,
+.wallet-withdraw-form .wallet-btn {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 0.5rem;
+}
+
+.wallet-deposit-form .wallet-input-icon,
+.wallet-withdraw-form .wallet-input-icon {
+  color: rgba(255, 215, 0, 0.8);
+  flex-shrink: 0;
+}

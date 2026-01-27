@@ -25,6 +25,7 @@ interface UserData {
   createdAt?: string;
   email?: string;
   wallet?: number;
+  wallet_balance?: number;
 }
 
 interface AuthContextType {
@@ -119,7 +120,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         createdAt: new Date().toISOString(),
         email: fakeEmail,
         onboarded: false,
-        wallet: 0
+        wallet: 0,
+        wallet_balance: 0,
       });
 
       return userCredential;

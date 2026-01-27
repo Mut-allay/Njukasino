@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect, Body
+from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import random
@@ -9,10 +9,14 @@ from datetime import datetime, timedelta
 import logging
 import json
 import os
-import requests
 from os import getenv
+from dotenv import load_dotenv
 
-# Firebase Admin SDK imports
+# Load environment variables: try cwd first, then project root
+load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
+
+from routers import payments as payments_router
 from firebase_admin import credentials, firestore, initialize_app
 
 logging.basicConfig(level=logging.INFO)
@@ -23,35 +27,13 @@ try:
     firebase_service_account_json = getenv("FIREBASE_SERVICE_ACCOUNT")
     if not firebase_service_account_json:
         raise ValueError("FIREBASE_SERVICE_ACCOUNT not set in .env")
-    
     cred = credentials.Certificate(json.loads(firebase_service_account_json))
     initialize_app(cred)
     db = firestore.client()
     logger.info("✅ Firebase Admin SDK initialized successfully")
 except Exception as e:
-    logger.error(f"❌ Firebase initialization failed: {e}")
+    logger.error("❌ Firebase initialization failed: %s", e)
     db = None
-
-# ====================== LENCO CONFIGURATION ======================
-LENCO_BASE_URL = "https://api.lenco.co/access/v2"
-LENCO_API_KEY = getenv("LENCO_API_KEY")
-if not LENCO_API_KEY:
-    logger.warning("⚠️  LENCO_API_KEY not set in .env - deposit features will not work")
-else:
-    logger.info(f"✅ LENCO_API_KEY loaded (starts with {LENCO_API_KEY[:10]}...)")
-
-# ====================== REQUEST MODELS ======================
-class DepositInitiateRequest(BaseModel):
-    amount: float
-    phone: str
-    operator: str  # "airtel" | "mtn"
-    reference: str = None  # Will be auto-generated if not provided
-    uid: str = None  # Firebase user ID
-
-class DepositVerifyRequest(BaseModel):
-    reference: str
-    otp: str
-    uid: str = None
 
 # ====================== GAME CONFIGURATION ======================
 
@@ -105,6 +87,9 @@ class LobbyGame(BaseModel):
 
 
 app = FastAPI(debug=True)
+
+# Lipila payment routes (prefix /api/payments; webhook unprotected)
+app.include_router(payments_router.router)
 
 # CORS - Relaxed for development and cross-device testing
 app.add_middleware(
@@ -263,229 +248,6 @@ async def create_lobby(request: CreateLobbyRequest):
     active_lobbies[lobby_id] = lobby
     logger.info(f"Lobby created: {lobby_id} by {request.host} with fee K{request.entry_fee}")
     return lobby.dict()
-
-# ====================== DEPOSIT ENDPOINTS (LENCO) ======================
-
-@app.post("/deposit/initiate")
-async def initiate_deposit(data: DepositInitiateRequest = Body(...)):
-    """
-    Initiate a mobile money deposit with Lenco.
-    Returns {reference, status, message}
-    """
-    if not LENCO_API_KEY or not db:
-        raise HTTPException(status_code=503, detail="Deposit service unavailable. Firebase or Lenco not configured.")
-    
-    # Generate reference if not provided
-    reference = data.reference or str(uuid.uuid4())
-    
-    try:
-        # Call Lenco API to initiate deposit
-        headers = {
-            "Authorization": f"Bearer {LENCO_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        
-        lenco_payload = {
-            "reference": reference,
-            "amount": int(data.amount),
-            "phone": data.phone,
-            "operator": data.operator.lower()  # "airtel" or "mtn"
-        }
-        
-        logger.info(f"Initiating Lenco deposit: reference={reference}, amount={data.amount}, phone={data.phone}")
-        
-        response = requests.post(
-            f"{LENCO_BASE_URL}/collections/mobile-money/initiate",
-            json=lenco_payload,
-            headers=headers,
-            timeout=10
-        )
-        
-        if response.status_code != 200:
-            error_detail = response.json().get("message", "Unknown error from Lenco")
-            logger.error(f"Lenco initiate failed: {response.status_code} - {error_detail}")
-            raise HTTPException(
-                status_code=response.status_code,
-                detail=f"Deposit initiation failed: {error_detail}"
-            )
-        
-        result = response.json()
-        logger.info(f"Lenco initiate success: {result}")
-        
-        return {
-            "reference": reference,
-            "status": result.get("data", {}).get("status", "pending"),
-            "message": "OTP sent to your phone",
-            "user_id": data.uid or "unknown"
-        }
-        
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Request error during deposit initiation: {e}")
-        raise HTTPException(
-            status_code=503,
-            detail="Failed to reach Lenco service. Please try again later."
-        )
-    except Exception as e:
-        logger.error(f"Unexpected error during deposit initiation: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="An unexpected error occurred. Please try again."
-        )
-
-@app.post("/deposit/verify")
-async def verify_deposit(data: DepositVerifyRequest = Body(...)):
-    """
-    Verify OTP and complete deposit.
-    Updates user's wallet in Firestore on success.
-    """
-    if not LENCO_API_KEY or not db:
-        raise HTTPException(status_code=503, detail="Deposit service unavailable. Firebase or Lenco not configured.")
-    
-    try:
-        # Call Lenco API to verify OTP
-        headers = {
-            "Authorization": f"Bearer {LENCO_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        
-        lenco_payload = {
-            "reference": data.reference,
-            "otp": data.otp
-        }
-        
-        logger.info(f"Verifying Lenco deposit: reference={data.reference}")
-        
-        response = requests.post(
-            f"{LENCO_BASE_URL}/collections/mobile-money/submit-otp",
-            json=lenco_payload,
-            headers=headers,
-            timeout=10
-        )
-        
-        if response.status_code != 200:
-            error_detail = response.json().get("message", "Verification failed")
-            logger.error(f"Lenco verify failed: {response.status_code} - {error_detail}")
-            raise HTTPException(
-                status_code=response.status_code,
-                detail=f"Invalid OTP or reference: {error_detail}"
-            )
-        
-        result = response.json()
-        deposit_data = result.get("data", {})
-        
-        # Check if deposit was successful
-        if deposit_data.get("status") != "successful":
-            logger.warning(f"Deposit not successful: status={deposit_data.get('status')}")
-            raise HTTPException(
-                status_code=400,
-                detail="Deposit verification failed. Please try again."
-            )
-        
-        amount = float(deposit_data.get("amount", 0))
-        phone = deposit_data.get("phone", "")
-        
-        logger.info(f"Lenco verify success: amount={amount}, phone={phone}")
-        
-        # Update user's wallet in Firestore
-        uid = data.uid
-        if uid:
-            try:
-                user_ref = db.collection("users").document(uid)
-                user_ref.update({
-                    "wallet": firestore.Increment(amount),
-                    "last_deposit": datetime.now(),
-                    "last_deposit_reference": data.reference
-                })
-                logger.info(f"User {uid} wallet updated: +K{amount}")
-            except Exception as e:
-                logger.error(f"Failed to update wallet in Firestore for {uid}: {e}")
-                # Don't fail the entire operation, deposit was successful
-        else:
-            logger.warning(f"No uid provided for deposit {data.reference}. Wallet not updated in Firestore.")
-        
-        return {
-            "reference": data.reference,
-            "status": "successful",
-            "amount": amount,
-            "message": f"Deposit of K{amount} completed successfully",
-            "user_id": uid or "unknown"
-        }
-        
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Request error during deposit verification: {e}")
-        raise HTTPException(
-            status_code=503,
-            detail="Failed to reach Lenco service. Please try again later."
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error during deposit verification: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="An unexpected error occurred. Please try again."
-        )
-
-@app.post("/webhook/lenco")
-async def lenco_webhook(payload: dict = Body(...)):
-    """
-    Webhook endpoint for async Lenco callbacks.
-    Lenco will POST to this endpoint when a transaction completes.
-    """
-    try:
-        logger.info(f"Lenco webhook received: {payload}")
-        
-        reference = payload.get("reference")
-        status = payload.get("status")
-        amount = payload.get("amount")
-        
-        if status == "successful" and reference and amount:
-            # You could store this in a database or trigger additional logic
-            logger.info(f"Webhook: Deposit {reference} successful for K{amount}")
-        
-        # Always return 200 OK to acknowledge webhook
-        return {"status": "received"}
-        
-    except Exception as e:
-        logger.error(f"Error processing Lenco webhook: {e}")
-        # Still return 200 OK - webhook should not retry on error
-        return {"status": "received", "error": str(e)}
-
-@app.get("/wallet/{player_name}")
-async def get_wallet(player_name: str, uid: str = None):
-    """
-    Fetch player's wallet balance from Firestore.
-    If uid is provided, use it directly. Otherwise, search by player_name.
-    Falls back to 0 if user not found or Firestore unavailable.
-    """
-    if not db:
-        logger.warning("Firestore not available, returning wallet=0")
-        return {"wallet": 0}
-    
-    try:
-        if uid:
-            # Direct lookup by uid (more efficient)
-            user_doc = db.collection("users").document(uid).get()
-            if user_doc.exists:
-                wallet = user_doc.get("wallet", 0)
-                logger.info(f"Wallet for uid {uid}: K{wallet}")
-                return {"wallet": wallet}
-        else:
-            # Search by player name
-            users = db.collection("users").where("name", "==", player_name).limit(1).stream()
-            for user_doc in users:
-                wallet = user_doc.get("wallet", 0)
-                logger.info(f"Wallet for player {player_name}: K{wallet}")
-                return {"wallet": wallet}
-        
-        # User not found, return default 0
-        logger.info(f"Player {player_name} not found in Firestore, returning wallet=0")
-        return {"wallet": 0}
-        
-    except Exception as e:
-        logger.error(f"Error fetching wallet for {player_name or uid}: {e}")
-        # Fail gracefully - return 0 instead of error
-        return {"wallet": 0}
 
 @app.post("/lobby/{lobby_id}/join")
 async def join_lobby(lobby_id: str, request: JoinLobbyRequest):

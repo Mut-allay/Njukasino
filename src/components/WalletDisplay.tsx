@@ -11,7 +11,7 @@ export const WalletDisplay = () => {
     return null;
   }
 
-  const wallet = userData.wallet ?? 0;
+  const wallet = (userData as { wallet_balance?: number })?.wallet_balance ?? userData?.wallet ?? 0;
 
   return (
     <div className="wallet-display">
@@ -22,15 +22,13 @@ export const WalletDisplay = () => {
           <span className="wallet-amount">K{wallet.toLocaleString()}</span>
         </div>
       </div>
-      {wallet < 10000 && (
-        <button 
-          className="deposit-btn-small"
-          onClick={() => navigate('/deposit')}
-          title="Add funds"
-        >
-          <Plus size={16} />
-        </button>
-      )}
+      <button
+        className="deposit-btn-small"
+        onClick={() => navigate('/wallet')}
+        title="Wallet"
+      >
+        <Plus size={16} />
+      </button>
     </div>
   );
 };

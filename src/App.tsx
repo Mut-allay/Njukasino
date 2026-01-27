@@ -20,6 +20,7 @@ const NotFoundPage = lazy(() => import('./routes/NotFoundPage').then(module => (
 const AuthPage = lazy(() => import('./routes/AuthPage').then(module => ({ default: module.AuthPage })));
 const SignUpPage = lazy(() => import('./routes/SignUpPage').then(module => ({ default: module.SignUpPage })));
 const DepositPage = lazy(() => import('./routes/DepositPage').then(module => ({ default: module.DepositPage })));
+const WalletPage = lazy(() => import('./pages/WalletPage').then(module => ({ default: module.WalletPage })));
 
 // 🎵 SOUND MANAGER HOOK - Handles all game audio
 const useSoundManager = () => {
@@ -282,6 +283,7 @@ function AppContent({ soundsEnabled, toggleSounds, playSound }: AppContentProps)
           <Route path="/onboarding" element={currentUser && !userData?.onboarded ? <Onboarding /> : <Navigate to="/" />} />
           <Route path="/home" element={currentUser && userData?.onboarded ? <HomePage /> : <Navigate to="/" />} />
           <Route path="/deposit" element={currentUser && userData?.onboarded ? <DepositPage /> : <Navigate to="/sign-in" />} />
+          <Route path="/wallet" element={currentUser && userData?.onboarded ? <WalletPage /> : <Navigate to="/sign-in" />} />
           <Route path="/multiplayer" element={currentUser && userData?.onboarded ? <MultiplayerLobbyPage /> : <Navigate to="/sign-in" />} />
           <Route path="/lobby/:lobbyId" element={currentUser && userData?.onboarded ? <GameRoomPage playSound={playSound} /> : <Navigate to="/sign-in" />} />
           <Route path="/cpu" element={currentUser && userData?.onboarded ? <CPUGameSetupPage /> : <Navigate to="/sign-in" />} />
