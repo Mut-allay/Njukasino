@@ -6,7 +6,6 @@ import type { MomoDepositRequest, CardDepositRequest, InitiateResponse } from '.
 
 const QUICK_AMOUNTS = [10, 20, 50, 100];
 
-const phoneRegex = /^\+?260\d{9}$|^0\d{9}$/;
 function normalizePhone(phone: string): string {
   const digits = phone.replace(/\D/g, '');
   if (digits.startsWith('260') && digits.length === 12) return `+${digits}`;
@@ -33,7 +32,8 @@ const depositSchema = z
           (data.cvv?.length ?? 0) >= 3
         );
       }
-      return (data.phone?.length ?? 0) >= 9 && phoneRegex.test(normalizePhone(data.phone ?? ''));
+      const normalized = normalizePhone(data.phone ?? '');
+      return (data.phone?.length ?? 0) >= 9 && normalized.startsWith('+260') && normalized.length === 13;
     },
     { message: 'Phone (+260...) or valid card details required', path: ['phone'] }
   );

@@ -12,7 +12,7 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-LIPILA_BASE_URL = os.getenv("LIPILA_BASE_URL", "https://api.lipila.dev/api/v1")
+LIPILA_BASE_URL = os.getenv("LIPILA_BASE_URL", "https://api.lipila.io/api/v1")
 LIPILA_API_KEY = os.getenv("LIPILA_API_KEY", "")
 
 
@@ -34,6 +34,7 @@ async def _request(
     max_attempts = 2  # 1 retry on 429
     for attempt in range(max_attempts):
         try:
+            logger.info("Lipila Request: %s %s | Body: %s", method, url, json_body)
             async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.request(
                     method,
@@ -75,10 +76,9 @@ async def initiate_momo_deposit(
     """
     payload = {
         "amount": amount,
-        "phone": phone if phone.startswith("+") else f"+260{phone.lstrip('0')}"[:12],
-        "referenceId": reference,
-        "callbackUrl": callback_url,
-        "currency": "ZMW",
+        "phone_number": phone,
+        "reference": reference,
+        "callback_url": callback_url,
     }
     return await _request("POST", "collections/mobile-money", json_body=payload)
 
