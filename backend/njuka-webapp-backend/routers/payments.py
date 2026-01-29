@@ -8,6 +8,7 @@ import hmac
 import json
 import logging
 import os
+import time
 import uuid
 from datetime import datetime
 from typing import Annotated
@@ -29,7 +30,7 @@ router = APIRouter(prefix="/api/payments", tags=["payments"])
 
 LIPILA_WEBHOOK_SECRET = os.getenv("LIPILA_WEBHOOK_SECRET", "")
 CALLBACK_BASE_URL = os.getenv(
-    "LIPILA_CALLBACK_BASE_URL", "https://njuka-webapp-backend.onrender.com"
+    "LIPILA_CALLBACK_BASE_URL", "https://abc-123-456.ngrok-free.app"
 )
 
 
@@ -174,46 +175,54 @@ async def post_deposit_momo(
     req: MomoDepositRequest,
     uid: Annotated[str, Depends(get_current_user)],
 ):
-    """Initiate a mobile money deposit via Lipila."""
+    """Initiate a mobile money deposit via Lipila (protected)."""
     db = _get_firestore()
     if not db:
         raise HTTPException(status_code=503, detail="Service unavailable")
 
     phone = _normalize_phone(req.phone)
-    if not phone.startswith("+260") or len(phone) != 12:
-        raise HTTPException(
-            status_code=400, detail="Invalid phone. Use E.164: +260xxxxxxxxx"
-        )
-    reference = str(uuid.uuid4())
+    if not phone.startswith("+260") or len(phone) != 13:
+        raise HTTPException(status_code=400, detail="Invalid phone. Use E.164: +260xxxxxxxxx")
+
+    reference = f"njuka_deposit_{uid}_{int(time.time())}"
     callback_url = f"{CALLBACK_BASE_URL.rstrip('/')}/api/payments/webhook/lipila"
-    result = await initiate_momo_deposit(
-        amount=req.amount,
-        phone=phone,
-        reference=reference,
-        callback_url=callback_url,
-    )
+
+    try:
+        result = await initiate_momo_deposit(
+            amount=float(req.amount),
+            phone=phone,
+            reference=reference,
+            callback_url=callback_url,
+        )
+    except Exception as e:
+        logger.exception("Error calling Lipila initiate_momo_deposit")
+        raise HTTPException(status_code=502, detail="Failed to call Lipila API")
+
     if result.get("_error"):
         code = result.get("status_code", 502)
         detail = result.get("body", result)
         if isinstance(detail, dict):
-            detail = detail.get("message", "Lipila request failed")
-        logger.error("Lipila momo deposit error: %s", result)
-        raise HTTPException(status_code=min(code, 502), detail=str(detail))
+            detail = detail.get("message") or detail.get("error") or detail
+        logger.error("Lipila momo deposit error: status=%s, detail=%s", code, detail)
+        raise HTTPException(status_code=400, detail=f"Lipila Error: {detail}")
 
+    # Record transaction
+    from firebase_admin import firestore
     _ensure_user_wallet(db, uid)
     tx_ref = db.collection("transactions").document(reference)
     tx_ref.set({
         "uid": uid,
-        "amount": req.amount,
+        "amount": float(req.amount),
         "type": "deposit",
         "payment_method": "momo",
         "status": "pending",
         "lipila_reference": reference,
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow(),
+        "created_at": firestore.SERVER_TIMESTAMP,
+        "updated_at": firestore.SERVER_TIMESTAMP,
     })
+
     logger.info("Deposit initiated: reference=%s uid=%s amount=%s", reference, uid, req.amount)
-    return {"reference": reference, "status": "pending", "message": "Confirm on your phone", **result}
+    return {"message": "Deposit initiated", "reference": reference, "lipila_response": result}
 
 
 @router.post("/withdraw/momo")

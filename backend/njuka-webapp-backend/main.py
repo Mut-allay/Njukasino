@@ -34,7 +34,7 @@ try:
     cred = credentials.Certificate(json.loads(firebase_service_account_json))
     initialize_app(cred)
     db = firestore.client()
-    logger.info("✅ Firebase Admin SDK initialized successfully")
+    logger.info("Firebase initialized")
 except Exception as e:
     logger.error("❌ Firebase initialization failed: %s", e)
     db = None

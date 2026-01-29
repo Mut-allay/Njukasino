@@ -71,11 +71,14 @@ export function useWebSocket(
   useEffect(() => {
     return () => {
       isMountedRef.current = false
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current)
+      const currentPollingRef = pollingRef.current
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      const currentReconnectTimeoutRef = reconnectTimeoutRef.current
+      if (currentPollingRef) {
+        clearInterval(currentPollingRef)
       }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current)
+      if (currentReconnectTimeoutRef) {
+        clearTimeout(currentReconnectTimeoutRef)
       }
     }
   }, [])
