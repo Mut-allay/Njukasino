@@ -1,52 +1,7 @@
-# Core FastAPI + async HTTP
-fastapi==0.115.4
-uvicorn==0.34.2
-httpx==0.27.2
-starlette==0.41.0
-
-# Firebase admin SDK + Google Cloud
-firebase-admin==6.5.0
-google-auth==2.35.0
-google-cloud-firestore==2.18.0
-google-cloud-core==2.4.2
-google-api-core==2.20.0
-google-crc32c==1.6.0
-grpcio==1.67.0
-proto-plus==1.25.0
-protobuf==4.25.8
-
-# Request/response validation and serialization
-pydantic==2.9.2
-pydantic-core==2.23.4
-
-# Environment and configuration
-python-dotenv==1.0.1
-
-# Cryptography and authentication
-cryptography==45.0.7
-pyasn1==0.6.1
-pyasn1-modules==0.4.1
-PyJWT==2.10.1
-
-# HTTP and networking
-certifi==2025.8.3
-charset-normalizer==3.4.2
-idna==3.8
-urllib3==1.26.20
-h11==0.14.0
-httpcore==1.0.9
-sniffio==1.3.1
-
-# WebSocket support
-websockets==13.1
-simple-websocket==1.1.0
-
-# Utilities
-anyio==4.9.0
-click==8.2.1
-colorama==0.4.6
-python-dateutil==2.9.0.post0
-six==1.17.0
-typing-extensions==4.13.2
-tenacity==8.5.0
-rsa==4.9.1
+fastapi>=0.115.0
+uvicorn>=0.30.0
+httpx>=0.27.0
+python-dotenv>=1.0.0
+firebase-admin>=6.0.0
+requests>=2.31.0
+pydantic>=2.0.0
