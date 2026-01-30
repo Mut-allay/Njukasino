@@ -26,7 +26,7 @@ from services.lipila import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/payments", tags=["payments"])
+router = APIRouter(tags=["payments"])
 
 LIPILA_WEBHOOK_SECRET = os.getenv("LIPILA_WEBHOOK_SECRET", "")
 CALLBACK_BASE_URL = os.getenv(
