@@ -83,7 +83,7 @@ async def initiate_momo_deposit(
         "referenceId": reference,
         "callbackUrl": callback_url,
         "narration": "Deposit to Njuka King Wallet",  # Add this required field
-        "paymentType": "MTNMoMo",  # or "AirtelMoney", "ZamtelKwacha" — match your phone
+        "paymentType": "AirtelMoney",  # Match your successful txns (Airtel)
     }
 
     url = f"{LIPILA_BASE_URL}/collections/mobile-money"

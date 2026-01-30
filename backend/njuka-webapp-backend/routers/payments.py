@@ -199,7 +199,7 @@ async def post_deposit_momo(
         raise HTTPException(status_code=400, detail="Invalid phone. Use E.164: +260xxxxxxxxx")
 
     reference = f"njuka_deposit_{uid}_{int(time.time())}"
-    callback_url = f"{CALLBACK_BASE_URL.rstrip('/')}/api/payments/webhook/lipila"
+    callback_url = f"{CALLBACK_BASE_URL.rstrip('/')}/api/payments/webhook"
 
     result = await initiate_momo_deposit(
         amount=float(req.amount),
@@ -250,7 +250,7 @@ async def post_withdraw_momo(
         raise HTTPException(status_code=400, detail="Insufficient balance")
 
     reference = str(uuid.uuid4())
-    callback_url = f"{CALLBACK_BASE_URL.rstrip('/')}/api/payments/webhook/lipila"
+    callback_url = f"{CALLBACK_BASE_URL.rstrip('/')}/api/payments/webhook"
     result = await initiate_momo_withdrawal(
         amount=req.amount,
         phone=phone,
@@ -291,7 +291,7 @@ async def post_deposit_card(
         raise HTTPException(status_code=503, detail="Service unavailable")
 
     reference = str(uuid.uuid4())
-    callback_url = f"{CALLBACK_BASE_URL.rstrip('/')}/api/payments/webhook/lipila"
+    callback_url = f"{CALLBACK_BASE_URL.rstrip('/')}/api/payments/webhook"
     card_details = {
         "cardNumber": req.card_details.card_number.replace(" ", ""),
         "expiryMonth": req.card_details.expiry_month,
@@ -366,7 +366,7 @@ async def get_transaction_status(
     }
 
 
-@router.post("/webhook/lipila")
+@router.post("/webhook")
 async def webhook_lipila(request: Request):
     """Lipila async callback. Verify HMAC-SHA256 (Lipila-Signature) then update transaction and wallet."""
     body = await request.body()
