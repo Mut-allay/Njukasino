@@ -20,7 +20,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 import sys
 sys.path.insert(0, os.path.dirname(__file__))
 
-from routers import payments as payments_router
+from routers.payments import router as payments_router
 from firebase_admin import credentials, firestore, initialize_app
 
 logging.basicConfig(level=logging.INFO)
@@ -93,7 +93,7 @@ class LobbyGame(BaseModel):
 app = FastAPI(debug=True)
 
 # Lipila payment routes (prefix /api/payments; webhook unprotected)
-app.include_router(payments_router.router)
+app.include_router(payments_router)
 
 # CORS - Relaxed for development and cross-device testing
 app.add_middleware(
