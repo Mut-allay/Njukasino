@@ -76,10 +76,11 @@ async def initiate_momo_deposit(
     POST /collections/mobile-money
     """
     payload = {
-        "amount": amount,
-        "phone_number": phone,
-        "reference": reference,
-        "callback_url": callback_url,
+        "amount": str(amount),
+        "phoneNumber": phone,
+        "referenceId": reference,
+        "callbackUrl": callback_url,
+        "currency": "ZMW",
     }
     return await _request("POST", "collections/mobile-money", json_body=payload)
 
@@ -95,7 +96,7 @@ async def initiate_momo_withdrawal(
     POST /disbursements/mobile-money
     """
     payload = {
-        "amount": amount,
+        "amount": str(amount),
         "phone": phone if phone.startswith("+") else f"+260{phone.lstrip('0')}"[:12],
         "referenceId": reference,
         "callbackUrl": callback_url,
