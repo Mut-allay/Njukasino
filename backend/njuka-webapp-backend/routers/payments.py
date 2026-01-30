@@ -378,6 +378,7 @@ async def webhook_lipila(request: Request):
     payment_method = payload.get("paymentMethod", "momo")
     if not reference:
         return {"status": "received", "error": "missing reference"}
+    logger.info("Processing webhook for reference: %s, status: %s, amount: %s", reference, status_value, amount)
     db = _get_firestore()
     if db:
         _ensure_transaction_and_user(

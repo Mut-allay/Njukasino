@@ -6,6 +6,8 @@ import { WalletDepositForm } from '../components/WalletDepositForm';
 import { WalletWithdrawForm } from '../components/WalletWithdrawForm';
 import { Wallet, ArrowDownCircle, ArrowUpCircle, Loader2 } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../config/firebase';
 import './WalletPage.css';
 
 type Tab = 'deposit' | 'withdraw';
@@ -44,6 +46,24 @@ export const WalletPage = () => {
   useEffect(() => {
     fetchBalance();
   }, [fetchBalance]);
+
+  // Realtime balance listener
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+
+    const userDocRef = doc(db, 'users', currentUser.uid);
+    const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const newBalance = data?.wallet_balance ?? 0;
+        setBalance(newBalance);
+      }
+    }, (error) => {
+      console.error('Error listening to balance updates:', error);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser?.uid]);
 
   const displayBalance = balance ?? (userData?.wallet_balance ?? (userData as { wallet?: number })?.wallet ?? 0);
   const defaultPhone = currentUser?.phoneNumber ?? (userData as { phone?: string })?.phone ?? '';
