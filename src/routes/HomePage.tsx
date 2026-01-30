@@ -7,11 +7,9 @@ export const HomePage = () => {
     const navigate = useNavigate();
     const { playerName, setPlayerName, startTutorial } = useGame();
 
-    const handleSelectMode = async (mode: 'multiplayer' | 'cpu' | 'tutorial') => {
+    const handleSelectMode = async (mode: 'multiplayer' | 'tutorial') => {
         if (mode === 'multiplayer') {
             navigate('/multiplayer');
-        } else if (mode === 'cpu') {
-            navigate('/cpu');
         } else if (mode === 'tutorial') {
             const newGameId = await startTutorial();
             if (newGameId) {

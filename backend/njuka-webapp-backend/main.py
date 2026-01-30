@@ -174,10 +174,10 @@ def new_game_state(mode: str, player_name: str, cpu_count: int = 1, max_players:
     random.shuffle(deck)
     players = []
 
-    if mode == "cpu":
+    if mode == "tutorial":
+        # Tutorial uses 1 CPU for demo, no entry fee
         players.append(Player(name=player_name, hand=[]))
-        for i in range(cpu_count):
-            players.append(Player(name=f"CPU {i+1}", hand=[], is_cpu=True))
+        players.append(Player(name="CPU Demo", hand=[], is_cpu=True))
     else:  # multiplayer
         players.append(Player(name=player_name, hand=[]))
 
@@ -289,9 +289,18 @@ async def list_lobbies():
     return list(active_lobbies.values())
 
 @app.post("/new_game")
-async def create_cpu_game(player_name: str = "Player", cpu_count: int = 1):
-    game = new_game_state("cpu", player_name, cpu_count=cpu_count)
+async def create_game(
+    mode: str = Query("tutorial", description="Game mode: tutorial or multiplayer"),
+    player_name: str = Query("Player", description="Player name"),
+    cpu_count: int = Query(1, description="Number of CPU players (for tutorial)"),
+    entry_fee: int = Query(0, description="Entry fee (0 for tutorial)")
+):
+    if mode not in ["tutorial", "multiplayer"]:
+        raise HTTPException(status_code=400, detail="Invalid mode. Must be 'tutorial' or 'multiplayer'")
+    
+    game = new_game_state(mode, player_name, cpu_count=cpu_count)
     active_games[game.id] = game
+    logger.info(f"Game created: {game.id} in {mode} mode by {player_name}")
     return game.dict()
 
 @app.get("/game/{game_id}")

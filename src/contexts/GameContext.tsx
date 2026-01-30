@@ -421,8 +421,29 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         setIsTutorial(true);
         setTutorialStep(0);
         setGuideVisible(true);
-        return await startCPUGame(1, 0); // 1 CPU, 0 entry fee
-    }, [startCPUGame]);
+        
+        // ⬇️ FORCE RESET: Clear previous game state
+        setGameState(null);
+        setGameId(null);
+        setLobby(null);
+
+        setLoadingStates(prev => ({ ...prev, starting: true }));
+        try {
+            console.log("[GameContext] Requesting tutorial game...");
+            const game = await gameService.createNewGame("tutorial", playerName, 1, 0);
+            console.log("[GameContext] Tutorial game created:", JSON.stringify(game));
+            
+            setGameState(game);
+            setGameId(game.id);
+            return game.id;
+        } catch (error: unknown) {
+            console.error("[GameContext] startTutorial error:", error);
+            setError(error instanceof Error ? error.message : "Failed to start tutorial");
+            return undefined;
+        } finally {
+            setLoadingStates(prev => ({ ...prev, starting: false }));
+        }
+    }, [playerName, gameService]);
 
     const nextTutorialStep = useCallback(() => {
         setTutorialStep(prev => prev + 1);
