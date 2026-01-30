@@ -9,6 +9,7 @@ import os
 from typing import Any
 
 import httpx
+from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -76,13 +77,32 @@ async def initiate_momo_deposit(
     POST /collections/mobile-money
     """
     payload = {
-        "amount": str(amount),
-        "phoneNumber": phone,
+        "amount": amount,
+        "accountNumber": phone.replace("+", ""),  # Lipila wants NO + prefix, just 26097...
+        "currency": "ZMW",
         "referenceId": reference,
         "callbackUrl": callback_url,
-        "currency": "ZMW",
+        "narration": "Deposit to Njuka King Wallet",  # Add this required field
+        "paymentType": "MTNMoMo",  # or "AirtelMoney", "ZamtelKwacha" — match your phone
     }
-    return await _request("POST", "collections/mobile-money", json_body=payload)
+
+    url = f"{LIPILA_BASE_URL}/collections/mobile-money"
+    logger.info(f"Lipila Request: POST {url} | Body: {payload}")
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            url,
+            json=payload,
+            headers={"x-api-key": LIPILA_API_KEY}
+        )
+        logger.info(f"Lipila Response: status={resp.status_code} body={resp.text}")
+
+        if resp.status_code != 200:
+            raise HTTPException(
+                status_code=resp.status_code,
+                detail=f"Lipila error: {resp.text}"
+            )
+        return resp.json()
 
 
 async def initiate_momo_withdrawal(

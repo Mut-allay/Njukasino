@@ -187,24 +187,12 @@ async def post_deposit_momo(
     reference = f"njuka_deposit_{uid}_{int(time.time())}"
     callback_url = f"{CALLBACK_BASE_URL.rstrip('/')}/api/payments/webhook/lipila"
 
-    try:
-        result = await initiate_momo_deposit(
-            amount=float(req.amount),
-            phone=phone,
-            reference=reference,
-            callback_url=callback_url,
-        )
-    except Exception as e:
-        logger.exception("Error calling Lipila initiate_momo_deposit")
-        raise HTTPException(status_code=502, detail="Failed to call Lipila API")
-
-    if result.get("_error"):
-        code = result.get("status_code", 502)
-        detail = result.get("body", result)
-        if isinstance(detail, dict):
-            detail = detail.get("message") or detail.get("error") or detail
-        logger.error("Lipila momo deposit error: status=%s, detail=%s", code, detail)
-        raise HTTPException(status_code=400, detail=f"Lipila Error: {detail}")
+    result = await initiate_momo_deposit(
+        amount=float(req.amount),
+        phone=phone,
+        reference=reference,
+        callback_url=callback_url,
+    )
 
     # Record transaction
     from firebase_admin import firestore
