@@ -48,7 +48,7 @@ app = FastAPI()
 # Add CORS for frontend (adjust origins for live)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "https://njuka-king.vercel.app", "*"],  # Add your Vercel URL
+    allow_origins=["http://localhost:5173", "https://njukasino.vercel.app", "*"],  # Add your Vercel URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

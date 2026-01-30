@@ -55,6 +55,7 @@ async def _request(
                         data,
                     )
                     return {"_error": True, "status_code": resp.status_code, "body": data}
+                logger.info("Lipila Response: status=%s body=%s", resp.status_code, data)
                 return data
         except httpx.RequestError as e:
             logger.error("Lipila request error: %s", e)
