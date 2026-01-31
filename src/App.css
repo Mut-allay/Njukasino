@@ -122,33 +122,33 @@
     max-height: calc(100vh - 40px);
     overflow-y: auto;
   }
-  
+
   .tutorial-content h3 {
     font-size: 1.3em;
     margin-bottom: 15px;
   }
-  
+
   .tutorial-step {
     flex-direction: column;
     text-align: center;
     gap: 8px;
     margin-bottom: 15px;
   }
-  
+
   .tutorial-step p {
     font-size: 0.85em;
   }
-  
+
   .tutorial-icon {
     font-size: 2em;
   }
-  
+
   .gesture-hint {
     font-size: 0.8em;
     padding: 6px 10px;
     text-align: left;
   }
-  
+
   .tutorial-close {
     padding: 14px 28px;
     font-size: 1.1em;
@@ -158,7 +158,8 @@
 }
 
 /* ⬇️ ADDED TO FIX BACKGROUND COVERAGE ⬇️ */
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   width: 100%;
@@ -186,7 +187,11 @@ html, body {
   }
 }
 
-h1, h2, h4, button { /* <-- Added h4 back to this rule */
+h1,
+h2,
+h4,
+button {
+  /* <-- Added h4 back to this rule */
   font-family: "Bebas Neue", sans-serif;
 }
 
@@ -241,7 +246,7 @@ h1, h2, h4, button { /* <-- Added h4 back to this rule */
 
 .App {
   text-align: center;
-  background-image: url('/images/10013144.jpg');
+  background-image: url("/images/10013144.jpg");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -381,7 +386,8 @@ button:disabled {
 }
 
 .card.facedown {
-  background: url("https://i.ibb.co/d49LvQ2d/Background-Red.png") no-repeat center center;
+  background: url("https://i.ibb.co/d49LvQ2d/Background-Red.png") no-repeat
+    center center;
   background-size: cover;
   border-radius: 6px;
 }
@@ -401,7 +407,13 @@ button:disabled {
 .card.facedown .card-back {
   width: 100%;
   height: 100%;
-  background: repeating-linear-gradient(45deg, #1a3a5a 0px, #1a3a5a 8px, #2a4a6a 8px, #2a4a6a 16px);
+  background: repeating-linear-gradient(
+    45deg,
+    #1a3a5a 0px,
+    #1a3a5a 8px,
+    #2a4a6a 8px,
+    #2a4a6a 16px
+  );
   border-radius: 6px;
   position: absolute;
   top: 0;
@@ -983,7 +995,7 @@ button:disabled {
     animation: none !important;
     transition: opacity 0.2s ease !important;
   }
-  
+
   /* Provide simple fade for accessibility */
   .card-drawing,
   .card-dealing {
@@ -992,8 +1004,12 @@ button:disabled {
 }
 
 @keyframes simpleFade {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* Mobile-First Hand Stability - No Card Movement During Animations */
@@ -1050,13 +1066,27 @@ button:disabled {
 }
 
 /* Sequential dealing delays for multiple cards - slower for visibility */
-.deal-delay-1 { animation-delay: 0.3s; }
-.deal-delay-2 { animation-delay: 0.6s; }
-.deal-delay-3 { animation-delay: 0.9s; }
-.deal-delay-4 { animation-delay: 1.2s; }
-.deal-delay-5 { animation-delay: 1.5s; }
-.deal-delay-6 { animation-delay: 1.8s; }
-.deal-delay-7 { animation-delay: 2.1s; }
+.deal-delay-1 {
+  animation-delay: 0.3s;
+}
+.deal-delay-2 {
+  animation-delay: 0.6s;
+}
+.deal-delay-3 {
+  animation-delay: 0.9s;
+}
+.deal-delay-4 {
+  animation-delay: 1.2s;
+}
+.deal-delay-5 {
+  animation-delay: 1.5s;
+}
+.deal-delay-6 {
+  animation-delay: 1.8s;
+}
+.deal-delay-7 {
+  animation-delay: 2.1s;
+}
 
 /* Performance optimizations for all animated cards */
 .card-drawing,
@@ -1126,7 +1156,9 @@ button:disabled {
   background: radial-gradient(ellipse at center, #0d4a24 0%, #0d4a24 100%);
   border-radius: 50% / 40%;
   border: 15px solid #5d4037;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.8), inset 0 0 30px rgba(0, 0, 0, 0.6);
+  box-shadow:
+    0 0 40px rgba(0, 0, 0, 0.8),
+    inset 0 0 30px rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1140,7 +1172,11 @@ button:disabled {
   left: 0;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.2) 0%,
+    transparent 70%
+  );
   pointer-events: none;
 }
 
@@ -1177,16 +1213,17 @@ button:disabled {
 }
 
 .player-seat.active .hand::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -2px;
   left: -2px;
   right: -2px;
   bottom: -2px;
   border-radius: 10px;
-  background: linear-gradient(45deg, 
-    rgba(248, 213, 107, 0.3), 
-    rgba(248, 213, 107, 0.1), 
+  background: linear-gradient(
+    45deg,
+    rgba(248, 213, 107, 0.3),
+    rgba(248, 213, 107, 0.1),
     rgba(248, 213, 107, 0.3)
   );
   z-index: -1;
@@ -1678,7 +1715,8 @@ button:disabled {
   }
 
   /* Better spacing for side players */
-  .left, .right {
+  .left,
+  .right {
     width: 80px;
     padding: 4px;
   }
@@ -1696,7 +1734,7 @@ button:disabled {
     padding: 8px;
     backdrop-filter: blur(3px);
   }
-  
+
   .player-name {
     font-size: 1.4em;
     margin: 0 0 6px 0;
@@ -1839,19 +1877,25 @@ button:disabled {
   }
 
   .card:hover {
-  transform: translateY(-8px) rotateX(10deg) rotateY(10deg);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    transform: translateY(-8px) rotateX(10deg) rotateY(10deg);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
   }
-  
+
   @keyframes cardFlip {
-  0% { transform: rotateY(0deg); }
-  50% { transform: rotateY(90deg); }
-  100% { transform: rotateY(180deg); }
+    0% {
+      transform: rotateY(0deg);
+    }
+    50% {
+      transform: rotateY(90deg);
+    }
+    100% {
+      transform: rotateY(180deg);
+    }
   }
   .card.revealing {
-  animation: cardFlip 0.6s ease forwards;
+    animation: cardFlip 0.6s ease forwards;
   }
-  
+
   .hand {
     flex-direction: row;
     justify-content: center;
@@ -1887,13 +1931,23 @@ button:disabled {
   /* Mobile Portrait Animation Optimizations */
   .card-drawing {
     animation-duration: 1.8s; /* Perfect timing for mobile portrait draw */
-    animation-timing-function: cubic-bezier(0.2, 0.1, 0.3, 1); /* Smooth easing */
+    animation-timing-function: cubic-bezier(
+      0.2,
+      0.1,
+      0.3,
+      1
+    ); /* Smooth easing */
   }
 
   .card-discarding,
   .discard-animation-overlay {
     animation-duration: 1.8s; /* Optimized for mobile portrait discard */
-    animation-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1); /* Natural arc */
+    animation-timing-function: cubic-bezier(
+      0.25,
+      0.1,
+      0.25,
+      1
+    ); /* Natural arc */
   }
 
   .card-shuffling {
@@ -1905,7 +1959,7 @@ button:disabled {
   }
 
   /* Mobile Portrait Animations - All Players */
-  
+
   /* Bottom Player Draw (Mobile) */
   @keyframes cardDraw {
     0% {
@@ -2335,7 +2389,6 @@ button:disabled {
   }
 }
 
-
 /* Screen reader only content */
 .sr-only {
   position: absolute !important;
@@ -2349,20 +2402,24 @@ button:disabled {
   border: 0 !important;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   width: 100%;
   overflow-x: hidden;
 }
 
-h1, h2, h4, button {
+h1,
+h2,
+h4,
+button {
   font-family: "Bebas Neue", sans-serif;
 }
 
 .App {
   text-align: center;
-  background-image: url('https://i.ibb.co/6csxbFY3/10013144.jpg');
+  background-image: url("https://i.ibb.co/6csxbFY3/10013144.jpg");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -2387,7 +2444,8 @@ h1 {
   font-size: clamp(2.2em, 8vw, 3em); /* Mobile-responsive title */
 }
 
-h2, h3 {
+h2,
+h3 {
   color: #f8d56b;
   margin-bottom: 10px;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
@@ -2521,7 +2579,11 @@ button:disabled {
   align-items: center;
   padding: 25px 20px; /* Reduced for mobile */
   border-radius: 15px;
-  background: linear-gradient(135deg, rgba(248, 213, 107, 0.2), rgba(248, 213, 107, 0.1));
+  background: linear-gradient(
+    135deg,
+    rgba(248, 213, 107, 0.2),
+    rgba(248, 213, 107, 0.1)
+  );
   border: 2px solid rgba(248, 213, 107, 0.3);
   color: white;
   text-decoration: none;
@@ -2532,7 +2594,11 @@ button:disabled {
 }
 
 .mode-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(248, 213, 107, 0.4), rgba(248, 213, 107, 0.2));
+  background: linear-gradient(
+    135deg,
+    rgba(248, 213, 107, 0.4),
+    rgba(248, 213, 107, 0.2)
+  );
   border-color: rgba(248, 213, 107, 0.6);
   transform: translateY(-5px);
 }
@@ -2778,13 +2844,13 @@ button:disabled {
   width: 100%;
   padding: 20px; /* Larger for mobile */
   font-size: clamp(1.1em, 4vw, 1.3em);
-  background: linear-gradient(to bottom, #4CAF50, #45a049);
+  background: linear-gradient(to bottom, #4caf50, #45a049);
   color: white;
   min-height: 56px; /* Large touch target */
 }
 
 .start-cpu-game-btn:hover:not(:disabled) {
-  background: linear-gradient(to bottom, #5CBF60, #4CAF50);
+  background: linear-gradient(to bottom, #5cbf60, #4caf50);
 }
 
 /* Rules Page Styles */
@@ -3051,8 +3117,12 @@ button:disabled {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Desktop overrides - only apply on larger screens */
@@ -3175,7 +3245,7 @@ button:disabled {
 }
 
 /* Prevent zoom on input focus for iOS */
-@media screen and (-webkit-min-device-pixel-ratio:0) {
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
   select,
   textarea,
   input[type="text"],
@@ -3291,7 +3361,9 @@ button:disabled {
 }
 
 .enhanced-bottom-menu.in-game {
-  transform: translateY(100%); /* Hide during active gameplay if needed, or keep minimal */
+  transform: translateY(
+    100%
+  ); /* Hide during active gameplay if needed, or keep minimal */
 }
 
 /* Keep visible even in game but very subtle if you prefer */
@@ -3393,8 +3465,14 @@ button:disabled {
 }
 
 @keyframes slideUp {
-  from { transform: translateY(100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .panel-header {
@@ -3562,10 +3640,10 @@ button:disabled {
 
 /* Smooth transitions for menu bar */
 .main-menu-bar {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
-              opacity 0.3s ease;
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s ease;
 }
-
 
 /* Animation for page transitions */
 .page-container {
@@ -3573,8 +3651,14 @@ button:disabled {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Floating Action Button (FAB) for Lobby */
@@ -3635,9 +3719,18 @@ button:disabled {
 }
 
 @keyframes pulse {
-  0% { transform: scale(0.95); opacity: 0.7; }
-  50% { transform: scale(1.1); opacity: 1; }
-  100% { transform: scale(0.95); opacity: 0.7; }
+  0% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
 }
 
 .premium-input {
@@ -3666,7 +3759,11 @@ button:disabled {
 .game-card {
   position: relative;
   width: 100%;
-  background: linear-gradient(135deg, rgba(30, 45, 60, 0.9), rgba(15, 25, 35, 0.95)) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(30, 45, 60, 0.9),
+    rgba(15, 25, 35, 0.95)
+  ) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   border-radius: 20px !important;
   padding: 0 !important;
@@ -3731,9 +3828,18 @@ button:disabled {
 }
 
 @keyframes badge-pulse {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.05); opacity: 0.9; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .text-box h3 {
@@ -3766,14 +3872,22 @@ button:disabled {
   right: -20px;
   width: 100px;
   height: 100px;
-  background: radial-gradient(circle, rgba(248, 213, 107, 0.05) 0%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(248, 213, 107, 0.05) 0%,
+    transparent 70%
+  );
   border-radius: 50%;
   pointer-events: none;
 }
 
 .tutorial-card {
   border: 1px solid rgba(248, 213, 107, 0.4) !important;
-  background: linear-gradient(135deg, rgba(40, 30, 60, 0.9), rgba(20, 15, 30, 0.95)) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(40, 30, 60, 0.9),
+    rgba(20, 15, 30, 0.95)
+  ) !important;
 }
 
 .tutorial-card .icon-box {
@@ -3824,6 +3938,66 @@ button:disabled {
   margin-bottom: 12px;
   letter-spacing: 0.5px;
   text-transform: uppercase;
+}
+
+.custom-amount-container {
+  margin: 15px 0 25px;
+  text-align: left;
+}
+
+.custom-amount-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: rgba(10, 30, 40, 0.7);
+  border: 1px solid rgba(248, 213, 107, 0.4);
+  border-radius: 12px;
+  padding: 12px 18px;
+  transition: all 0.3s ease;
+  min-height: 60px;
+}
+
+.custom-amount-input-wrapper:focus-within {
+  border-color: #f8d56b;
+  box-shadow: 0 0 15px rgba(248, 213, 107, 0.15);
+  background: rgba(10, 30, 40, 0.9);
+}
+
+.amount-prefix {
+  color: #f8d56b;
+  font-weight: bold;
+  font-size: 1.4em;
+  margin-right: 12px;
+}
+
+.amount-suffix {
+  color: #6a8ba0; /* Muted teal/blue as seen in some casino UIs, or keep gold */
+  font-weight: bold;
+  font-size: 1.4em;
+  margin-left: 12px;
+}
+
+.custom-amount-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 1.8em;
+  font-weight: bold;
+  text-align: left; /* Image shows it left-aligned after prefix */
+  outline: none;
+  padding: 0;
+  width: 100%;
+  font-family: inherit;
+}
+
+.custom-amount-input::-webkit-inner-spin-button,
+.custom-amount-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.custom-amount-input {
+  -moz-appearance: textfield;
 }
 
 .chips-grid {
@@ -4012,8 +4186,17 @@ button:disabled {
   left: 0;
   right: 0;
   bottom: 0;
-  background: radial-gradient(circle at 20% 50%, rgba(248, 213, 107, 0.1) 0%, transparent 50%),
-              radial-gradient(circle at 80% 50%, rgba(168, 85, 247, 0.05) 0%, transparent 50%);
+  background:
+    radial-gradient(
+      circle at 20% 50%,
+      rgba(248, 213, 107, 0.1) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 50%,
+      rgba(168, 85, 247, 0.05) 0%,
+      transparent 50%
+    );
   z-index: 1;
 }
 
@@ -4042,11 +4225,12 @@ button:disabled {
 }
 
 .hero-title {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: "Bebas Neue", sans-serif;
   font-size: clamp(2.5em, 12vw, 4.5em);
   color: #f8d56b;
-  text-shadow: 0 0 40px rgba(248, 213, 107, 0.3),
-               0 4px 20px rgba(0, 0, 0, 0.5);
+  text-shadow:
+    0 0 40px rgba(248, 213, 107, 0.3),
+    0 4px 20px rgba(0, 0, 0, 0.5);
   letter-spacing: 3px;
   font-weight: 900;
   margin: 0;
@@ -4143,7 +4327,11 @@ button:disabled {
 .landing-game-card {
   position: relative;
   width: 100%;
-  background: linear-gradient(135deg, rgba(30, 45, 60, 0.9), rgba(15, 25, 35, 0.95));
+  background: linear-gradient(
+    135deg,
+    rgba(30, 45, 60, 0.9),
+    rgba(15, 25, 35, 0.95)
+  );
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
   padding: 0;
@@ -4319,7 +4507,11 @@ button:disabled {
   z-index: 2;
   width: 100%;
   padding: 60px 20px;
-  background: linear-gradient(135deg, rgba(40, 25, 55, 0.9), rgba(25, 15, 35, 0.95));
+  background: linear-gradient(
+    135deg,
+    rgba(40, 25, 55, 0.9),
+    rgba(25, 15, 35, 0.95)
+  );
   border-top: 1px solid rgba(248, 213, 107, 0.2);
   border-bottom: 1px solid rgba(248, 213, 107, 0.2);
 }
@@ -4440,7 +4632,12 @@ button:disabled {
 
 .footer-divider {
   height: 1px;
-  background: linear-gradient(to right, transparent, rgba(248, 213, 107, 0.2), transparent);
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(248, 213, 107, 0.2),
+    transparent
+  );
   margin: 30px 0;
 }
 

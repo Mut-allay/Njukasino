@@ -73,6 +73,22 @@ export const MultiplayerPage = ({
             onChange={setEntryFee}
           />
 
+          <div className="custom-amount-container">
+            <label className="selection-label">AMOUNT (ZMW)</label>
+            <div className="custom-amount-input-wrapper">
+              <span className="amount-prefix">$</span>
+              <input
+                type="number"
+                value={entryFee || 0}
+                onChange={(e) => setEntryFee(Number(e.target.value))}
+                className="custom-amount-input"
+                placeholder="0"
+                min="0"
+              />
+              <span className="amount-suffix">K</span>
+            </div>
+          </div>
+
           <button
             onClick={onCreateLobby}
             disabled={loadingStates.starting || !playerName.trim()}

@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../config/firebase';
 import { createWalletApi } from '../services/walletApi';
 import { WalletDepositForm } from '../components/WalletDepositForm';
 import { WalletWithdrawForm } from '../components/WalletWithdrawForm';
-import { Wallet, ArrowDownCircle, ArrowUpCircle, Loader2 } from 'lucide-react';
+import { Wallet, ArrowDownCircle, ArrowUpCircle, Loader2, ArrowLeft } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -14,6 +15,7 @@ type Tab = 'deposit' | 'withdraw';
 
 export const WalletPage = () => {
   const { currentUser, userData } = useAuth();
+  const navigate = useNavigate();
   const [balance, setBalance] = useState<number | null>(null);
   const [loadingBalance, setLoadingBalance] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -86,10 +88,17 @@ export const WalletPage = () => {
       />
 
       <div className="wallet-page-card">
-        <h1 className="wallet-page-title">
-          <Wallet size={28} />
-          Wallet
-        </h1>
+        <div className="wallet-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', width: '100%' }}>
+          <button onClick={() => navigate('/home')} className="back-button">
+            <ArrowLeft size={18} />
+            Back
+          </button>
+          <h1 className="wallet-page-title" style={{ margin: 0 }}>
+            <Wallet size={24} />
+            Wallet
+          </h1>
+          <div style={{ width: '60px' }}></div> {/* Spacer to keep title centered if needed */}
+        </div>
 
         <div className="wallet-balance-box">
           <span className="wallet-balance-label">Available balance</span>

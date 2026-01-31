@@ -46,6 +46,26 @@ export const HomePage = ({ onSelectMode, playerName, setPlayerName }: HomePagePr
         
         <div className="game-cards">
           <button
+            className="game-card multiplayer-card"
+            onClick={() => handleModeSelection('multiplayer')}
+            disabled={!playerName.trim()}
+          >
+            <div className="card-content">
+              <div className="icon-box">
+                <Users size={40} />
+              </div>
+              <div className="text-box">
+                <h3>Multiplayer</h3>
+                <p>Play with friends online</p>
+              </div>
+              <div className="go-icon">
+                <Zap size={20} />
+              </div>
+            </div>
+            <div className="card-decoration"></div>
+          </button>
+
+          <button
             className="game-card tutorial-card"
             onClick={() => handleModeSelection('tutorial')}
             disabled={!playerName.trim()}
@@ -60,26 +80,6 @@ export const HomePage = ({ onSelectMode, playerName, setPlayerName }: HomePagePr
                   <span className="premium-badge">NEW</span>
                 </div>
                 <p>Learn the basics step-by-step</p>
-              </div>
-              <div className="go-icon">
-                <Zap size={20} />
-              </div>
-            </div>
-            <div className="card-decoration"></div>
-          </button>
-
-          <button
-            className="game-card multiplayer-card"
-            onClick={() => handleModeSelection('multiplayer')}
-            disabled={!playerName.trim()}
-          >
-            <div className="card-content">
-              <div className="icon-box">
-                <Users size={40} />
-              </div>
-              <div className="text-box">
-                <h3>Multiplayer</h3>
-                <p>Play with friends online</p>
               </div>
               <div className="go-icon">
                 <Zap size={20} />
