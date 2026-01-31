@@ -153,14 +153,18 @@ def _ensure_transaction_and_user(
     if new_status == "success":
         from firebase_admin import firestore
         try:
+            # CRITICAL: Use the type from our DB, not the parameter from the webhook
+            # This ensures 'withdrawal' is always treated as a deduction even if Lipila calls it 'disbursement'
+            internal_type = data.get("type", "deposit")
+            
             user_ref = db.collection("users").document(uid)
             _ensure_user_wallet(db, uid)
-            increment_amount = amount if txn_type != "withdrawal" else -amount
+            increment_amount = amount if internal_type != "withdrawal" else -amount
             user_ref.update({
                 "wallet_balance": firestore.Increment(increment_amount),
                 "updated_at": datetime.utcnow(),
             })
-            logger.info("Webhook: Updated user %s wallet by %.2f (new balance should reflect)", uid, increment_amount)
+            logger.info("Webhook: Updated user %s wallet by %.2f (type: %s)", uid, increment_amount, internal_type)
         except Exception as e:
             logger.error("Webhook: Failed to update user %s wallet: %s", uid, e)
 
