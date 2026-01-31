@@ -1,14 +1,14 @@
-import { Users, Bot, Zap, GraduationCap } from 'lucide-react';
+import { Users, Zap, GraduationCap } from 'lucide-react';
 import { hapticFeedback } from '../utils/haptics';
 
 interface HomePageProps {
-  onSelectMode: (mode: 'multiplayer' | 'cpu' | 'tutorial') => void;
+  onSelectMode: (mode: 'multiplayer' | 'tutorial') => void;
   playerName: string;
   setPlayerName: (name: string) => void;
 }
 
 export const HomePage = ({ onSelectMode, playerName, setPlayerName }: HomePageProps) => {
-  const handleModeSelection = (mode: 'multiplayer' | 'cpu' | 'tutorial') => {
+  const handleModeSelection = (mode: 'multiplayer' | 'tutorial') => {
     hapticFeedback('medium');
     onSelectMode(mode);
   };
@@ -80,26 +80,6 @@ export const HomePage = ({ onSelectMode, playerName, setPlayerName }: HomePagePr
               <div className="text-box">
                 <h3>Multiplayer</h3>
                 <p>Play with friends online</p>
-              </div>
-              <div className="go-icon">
-                <Zap size={20} />
-              </div>
-            </div>
-            <div className="card-decoration"></div>
-          </button>
-          
-          <button
-            className="game-card cpu-card"
-            onClick={() => handleModeSelection('cpu')}
-            disabled={!playerName.trim()}
-          >
-            <div className="card-content">
-              <div className="icon-box">
-                <Bot size={40} />
-              </div>
-              <div className="text-box">
-                <h3>Practice vs CPU</h3>
-                <p>Sharpen your skills</p>
               </div>
               <div className="go-icon">
                 <Zap size={20} />

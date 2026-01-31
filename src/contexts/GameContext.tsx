@@ -29,7 +29,6 @@ interface GameContextType {
     // Game actions
     createLobby: (numPlayers: number, entryFee: number) => Promise<LobbyGame>;
     joinLobby: (lobbyId: string) => Promise<void>;
-    startCPUGame: (numCPU: number, entryFee: number) => Promise<string | undefined>;
     drawCard: () => Promise<void>;
     discardCard: (index: number) => Promise<void>;
     quitGame: () => void;
@@ -198,7 +197,6 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
 
                 // Poll game if in progress
                 if (gameId) {
-                    const isCPUGame = gameState?.mode === 'cpu';
                     const isMultiplayerWithoutWS = gameState?.mode === 'multiplayer' && (!gameWS || gameWS.readyState !== WebSocket.OPEN);
                     
                     // Also poll if player is not found in game state (handles race conditions)
@@ -208,7 +206,7 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
                     );
                     const shouldPollForPlayer = gameState && !playerInGame && gameState.mode === 'multiplayer';
                     
-                    if (isCPUGame || isMultiplayerWithoutWS || shouldPollForPlayer) {
+                    if (isMultiplayerWithoutWS || shouldPollForPlayer) {
                         const game = await gameService.getGame(gameId);
                         const refreshedPlayerInGame = game.players.find(p => 
                             p.name.trim().toLowerCase() === playerNameToMatch
@@ -300,60 +298,6 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         }
     }, [playerName, gameService]);
 
-    const startCPUGame = useCallback(async (numCPU: number, entryFee: number) => {
-        console.log(`[GameContext] startCPUGame called for ${numCPU} CPUs with fee ${entryFee}`);
-        // ⬇️ FORCE RESET: Clear previous game state
-        setGameState(null);
-        setGameId(null);
-        setLobby(null);
-
-        setLoadingStates(prev => ({ ...prev, starting: true }));
-        try {
-            console.log("[GameContext] Requesting createNewGame...");
-            let game = await gameService.createNewGame("cpu", playerName, numCPU, entryFee);
-            console.log("[GameContext] createNewGame response:", JSON.stringify(game));
-            
-            // ⬇️ WORKAROUND: If backend returns a finished game (sticky session), try to flush it
-            // CHECK: game_over might be missing or false, so also check if 'winner' is present
-            const isFinished = game.game_over === true || !!game.winner;
-            
-            if (isFinished) {
-                console.warn(`[GameContext] Backend returned a finished game (game_over=${game.game_over}, winner=${game.winner}). Attempting to flush session...`);
-                try {
-                    // Attempt to 'cancel' the stuck game ID to clear it from backend memory
-                    console.log(`[GameContext] Cancelling stuck game ID: ${game.id}`);
-                    await gameService.cancelLobby(game.id, playerName).catch((e) => console.warn("cancelLobby failed safely:", e));
-                    
-                    // Small delay to allow backend to process
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    
-                    // Retry creating the game
-                    console.log("[GameContext] Retrying new game creation...");
-                    game = await gameService.createNewGame("cpu", playerName, numCPU, entryFee);
-                    console.log("[GameContext] Retry response:", JSON.stringify(game));
-                    
-                    const isRetryFinished = game.game_over === true || !!game.winner;
-                    if (isRetryFinished) {
-                        throw new Error(`Unable to start new game: Server returned finished game ID ${game.id}. Please refresh the page.`);
-                    }
-                } catch (retryError: unknown) {
-                    console.error("[GameContext] Retry failed:", retryError);
-                    throw retryError; // Re-throw to be caught by outer block
-                }
-            }
-
-            setGameState(game);
-            setGameId(game.id);
-            return game.id;
-        } catch (error: unknown) {
-            console.error("[GameContext] startCPUGame error:", error);
-            setError(error instanceof Error ? error.message : "Failed to create game");
-            return undefined;
-        } finally {
-            setLoadingStates(prev => ({ ...prev, starting: false }));
-        }
-    }, [playerName, gameService]);
-
     const drawCard = useCallback(async () => {
         setLoadingStates(prev => ({ ...prev, drawing: true }));
         setError(null);
@@ -421,8 +365,29 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         setIsTutorial(true);
         setTutorialStep(0);
         setGuideVisible(true);
-        return await startCPUGame(1, 0); // 1 CPU, 0 entry fee
-    }, [startCPUGame]);
+        
+        // ⬇️ FORCE RESET: Clear previous game state
+        setGameState(null);
+        setGameId(null);
+        setLobby(null);
+
+        setLoadingStates(prev => ({ ...prev, starting: true }));
+        try {
+            console.log("[GameContext] Requesting tutorial game...");
+            const game = await gameService.createNewGame("tutorial", playerName, 1, 0);
+            console.log("[GameContext] Tutorial game created:", JSON.stringify(game));
+            
+            setGameState(game);
+            setGameId(game.id);
+            return game.id;
+        } catch (error: unknown) {
+            console.error("[GameContext] startTutorial error:", error);
+            setError(error instanceof Error ? error.message : "Failed to start tutorial");
+            return undefined;
+        } finally {
+            setLoadingStates(prev => ({ ...prev, starting: false }));
+        }
+    }, [playerName, gameService]);
 
     const nextTutorialStep = useCallback(() => {
         setTutorialStep(prev => prev + 1);
@@ -446,7 +411,6 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         gameWS,
         createLobby,
         joinLobby,
-        startCPUGame,
         startTutorial,
         drawCard,
         discardCard,

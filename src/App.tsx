@@ -11,7 +11,6 @@ import LoadingOverlay from './components/LoadingOverlay';
 // Lazy load route components
 const HomePage = lazy(() => import('./routes/HomePage').then(module => ({ default: module.HomePage })));
 const MultiplayerLobbyPage = lazy(() => import('./routes/MultiplayerLobbyPage').then(module => ({ default: module.MultiplayerLobbyPage })));
-const CPUGameSetupPage = lazy(() => import('./routes/CPUGameSetupPage').then(module => ({ default: module.CPUGameSetupPage })));
 const GameRoomPage = lazy(() => import('./routes/GameRoomPage').then(module => ({ default: module.GameRoomPage })));
 const LandingPage = lazy(() => import('./pages/LandingPage').then(module => ({ default: module.LandingPage })));
 const Onboarding = lazy(() => import('./pages/Onboarding').then(module => ({ default: module.Onboarding })));
@@ -286,7 +285,6 @@ function AppContent({ soundsEnabled, toggleSounds, playSound }: AppContentProps)
           <Route path="/wallet" element={currentUser && userData?.onboarded ? <WalletPage /> : <Navigate to="/sign-in" />} />
           <Route path="/multiplayer" element={currentUser && userData?.onboarded ? <MultiplayerLobbyPage /> : <Navigate to="/sign-in" />} />
           <Route path="/lobby/:lobbyId" element={currentUser && userData?.onboarded ? <GameRoomPage playSound={playSound} /> : <Navigate to="/sign-in" />} />
-          <Route path="/cpu" element={currentUser && userData?.onboarded ? <CPUGameSetupPage /> : <Navigate to="/sign-in" />} />
           <Route path="/game/:gameId" element={currentUser && userData?.onboarded ? <GameRoomPage playSound={playSound} /> : <Navigate to="/sign-in" />} />
           <Route path="/rules" element={<RulesPage />} />
           <Route path="/sign-in" element={currentUser ? <Navigate to="/" /> : <AuthPage />} />
