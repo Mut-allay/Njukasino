@@ -285,7 +285,7 @@ async def create_lobby(request: CreateLobbyRequest):
     logger.info(f"Lobby created: {lobby_id} by {request.host} with entry fee {request.entry_fee}")
     return lobby.dict()
 
-@app.get("/lobby/{lobby_id}/join")
+@app.post("/lobby/{lobby_id}/join")
 async def join_lobby(lobby_id: str, request: JoinLobbyRequest):
     if lobby_id not in active_lobbies:
         raise HTTPException(status_code=404, detail="Lobby not found")
