@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import Card from './Card'
 import { useGame } from '../contexts/GameContext'
+import { useAuth } from '../contexts/AuthContext'
+import { doc, onSnapshot } from 'firebase/firestore'
+import { db } from '../config/firebase'
 import TutorialModal from './TutorialModal'
 import './GameTable.css'
 
@@ -15,6 +18,7 @@ type Player = {
   hand: CardType[]
   is_cpu: boolean
   wallet: number
+  userId?: string // Assuming the backend now sends the Firebase UID
 }
 
 type GameState = {
@@ -55,11 +59,47 @@ export const GameTable: React.FC<GameTableProps> = ({
   playSound
 }) => {
   const { isTutorial, tutorialStep, nextTutorialStep, setGuideVisible } = useGame();
+  const { userData } = useAuth();
   const tableRef = useRef<HTMLDivElement>(null)
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null)
   const [showDeckHighlight, setShowDeckHighlight] = useState(false)
   const [discardingCardIndex, setDiscardingCardIndex] = useState<number | null>(null)
   
+  // Real-time balances for all players
+  const [playerBalances, setPlayerBalances] = useState<Record<string, number>>({});
+
+  // Listen to Firestore for player balances if UIDs are available
+  useEffect(() => {
+    const unsubscribes: (() => void)[] = [];
+
+    state.players.forEach(player => {
+      // If it's a CPU, balance is irrelevant or handle separately
+      if (player.is_cpu) return;
+
+      // Use the local userData for the current player for better performance/reliability
+      if (player.name === playerName && userData) {
+        setPlayerBalances(prev => ({ ...prev, [player.name]: userData.wallet_balance || 0 }));
+        return;
+      }
+
+      // For other players, we'd ideally have their UID. 
+      // If UID is not in state, we might need to fetch it or rely on the backend transmitting it.
+      // For now, let's assume the backend might send 'userId' in the player object.
+      if (player.userId) {
+        const userRef = doc(db, 'users', player.userId);
+        const unsub = onSnapshot(userRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setPlayerBalances(prev => ({ ...prev, [player.name]: data.wallet_balance || 0 }));
+          }
+        });
+        unsubscribes.push(unsub);
+      }
+    });
+
+    return () => unsubscribes.forEach(unsub => unsub());
+  }, [state.players, playerName, userData]);
+
   // Animation States
   const [animatingDiscard, setAnimatingDiscard] = useState<{
     card: CardType,
@@ -67,6 +107,7 @@ export const GameTable: React.FC<GameTableProps> = ({
   } | null>(null)
   
   const [animatingDraw, setAnimatingDraw] = useState<{
+// ... (rest of the component structure remains the same, but using playerBalances)
     card: CardType,
     style: React.CSSProperties,
     playerName: string
@@ -412,7 +453,7 @@ export const GameTable: React.FC<GameTableProps> = ({
               {seatPlayers.top.name}
               {seatPlayers.top.is_cpu && " (CPU)"}
             </h3>
-            <span className="player-wallet">K0</span>
+            <span className="player-wallet">K{(playerBalances[seatPlayers.top.name] || 0).toLocaleString()}</span>
           </div>
           <div className="hand horizontal" aria-label={`${seatPlayers.top.name}'s hand with ${seatPlayers.top.hand.length} cards`}>
             {seatPlayers.top.hand.map((card, i) => {
@@ -445,7 +486,7 @@ export const GameTable: React.FC<GameTableProps> = ({
               {seatPlayers.left.name}
               {seatPlayers.left.is_cpu && " (CPU)"}
             </h3>
-            <span className="player-wallet">K0</span>
+            <span className="player-wallet">K{(playerBalances[seatPlayers.left.name] || 0).toLocaleString()}</span>
           </div>
           <div className="hand horizontal" aria-label={`${seatPlayers.left.name}'s hand with ${seatPlayers.left.hand.length} cards`}>
             {seatPlayers.left.hand.map((card, i) => {
@@ -478,7 +519,7 @@ export const GameTable: React.FC<GameTableProps> = ({
               {seatPlayers.right.name}
               {seatPlayers.right.is_cpu && " (CPU)"}
             </h3>
-            <span className="player-wallet">K0</span>
+            <span className="player-wallet">K{(playerBalances[seatPlayers.right.name] || 0).toLocaleString()}</span>
           </div>
           <div className="hand horizontal" aria-label={`${seatPlayers.right.name}'s hand with ${seatPlayers.right.hand.length} cards`}>
             {seatPlayers.right.hand.map((card, i) => {
@@ -553,7 +594,7 @@ export const GameTable: React.FC<GameTableProps> = ({
       >
         <div className="player-header">
           <h4 className="player-name">{yourPlayer.name} (You)</h4>
-          <span className="player-wallet">K0</span>
+          <span className="player-wallet">K{(playerBalances[yourPlayer.name] || 0).toLocaleString()}</span>
         </div>
         <div className="hand" aria-label={`Your hand with ${yourPlayer.hand?.length || 0} cards`}>
           {yourPlayer.hand?.map((card, i) => {
