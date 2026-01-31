@@ -116,11 +116,12 @@ async def initiate_momo_withdrawal(
     POST /disbursements/mobile-money
     """
     payload = {
-        "amount": str(amount),
-        "phone": phone if phone.startswith("+") else f"+260{phone.lstrip('0')}"[:12],
+        "amount": amount,
+        "accountNumber": phone.replace("+", ""),  # Lipila wants NO + prefix
+        "currency": "ZMW",
         "referenceId": reference,
         "callbackUrl": callback_url,
-        "currency": "ZMW",
+        "narration": "Withdrawal from Njuka King Wallet",
     }
     return await _request("POST", "disbursements/mobile-money", json_body=payload)
 

@@ -69,10 +69,12 @@ class CardDepositRequest(BaseModel):
 
 def _normalize_phone(phone: str) -> str:
     p = "".join(c for c in phone if c.isdigit())
-    if p.startswith("260") and len(p) == 12:
-        return f"+{p}"
+    if p.startswith("0") and len(p) == 10:
+        p = p[1:]  # turn 097... into 97...
     if len(p) == 9:
         return f"+260{p}"
+    if len(p) == 12 and p.startswith("260"):
+        return f"+{p}"
     return phone
 
 
@@ -238,7 +240,7 @@ async def post_withdraw_momo(
         raise HTTPException(status_code=503, detail="Service unavailable")
 
     phone = _normalize_phone(req.phone)
-    if not phone.startswith("+260") or len(phone) != 12:
+    if not phone.startswith("+260") or len(phone) != 13:
         raise HTTPException(
             status_code=400, detail="Invalid phone. Use E.164: +260xxxxxxxxx"
         )
