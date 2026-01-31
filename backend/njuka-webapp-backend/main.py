@@ -70,6 +70,7 @@ class Card(BaseModel):
 
 class Player(BaseModel):
     name: str
+    uid: str = ""
     hand: List[Card]
     is_cpu: bool = False
 
@@ -98,6 +99,8 @@ class LobbyGame(BaseModel):
     last_updated: datetime
     game_id: Optional[str] = None
     entry_fee: int = 0
+    host_uid: str = ""
+    player_uids: List[str] = []
 
     class Config:
         json_encoders = {datetime: lambda dt: dt.isoformat()}
@@ -172,17 +175,17 @@ manager = ConnectionManager()
 def create_deck() -> List[Card]:
     return [Card(value=v, suit=s) for s in suits for v in values]
 
-def new_game_state(mode: str, player_name: str, cpu_count: int = 1, max_players: int = 4, entry_fee: int = 0) -> GameState:
+def new_game_state(mode: str, player_name: str, player_uid: str = "", cpu_count: int = 1, max_players: int = 4, entry_fee: int = 0) -> GameState:
     deck = create_deck()
     random.shuffle(deck)
     players = []
 
     if mode == "tutorial":
         # Tutorial uses 1 CPU for demo, no entry fee
-        players.append(Player(name=player_name, hand=[]))
-        players.append(Player(name="CPU Demo", hand=[], is_cpu=True))
+        players.append(Player(name=player_name, uid=player_uid, hand=[]))
+        players.append(Player(name="CPU Demo", uid="cpu_demo", hand=[], is_cpu=True))
     else:  # multiplayer
-        players.append(Player(name=player_name, hand=[]))
+        players.append(Player(name=player_name, uid=player_uid, hand=[]))
 
     # Deal 3 cards to each player
     for _ in range(3):
@@ -208,11 +211,13 @@ def new_game_state(mode: str, player_name: str, cpu_count: int = 1, max_players:
 # ====================== REQUEST MODELS ======================
 class CreateLobbyRequest(BaseModel):
     host: str
+    host_uid: str
     max_players: int = 4
     entry_fee: int = 0
 
 class JoinLobbyRequest(BaseModel):
     player: str
+    player_uid: str
 
 # ====================== ROUTES ======================
 
@@ -226,8 +231,8 @@ async def create_lobby(request: CreateLobbyRequest):
     # Deduct entry fee from host's wallet if entry_fee > 0
     if request.entry_fee > 0:
         try:
-            # Get user document
-            user_ref = db.collection('users').document(request.host)
+            # Get user document using host_uid (more reliable than host name)
+            user_ref = db.collection('users').document(request.host_uid)
             user_doc = user_ref.get()
             if not user_doc.exists:
                 raise HTTPException(status_code=404, detail="User not found")
@@ -256,17 +261,21 @@ async def create_lobby(request: CreateLobbyRequest):
                 return balance - request.entry_fee
             
             new_balance = deduct_fee(db.transaction())
-            logger.info(f"Deducted {request.entry_fee} from {request.host}, new balance: {new_balance}")
+            logger.info(f"Deducted {request.entry_fee} from {request.host_uid}, new balance: {new_balance}")
             
+        except HTTPException:
+            raise
         except Exception as e:
-            logger.error(f"Failed to deduct entry fee from {request.host}: {e}")
+            logger.error(f"Failed to deduct entry fee from {request.host_uid}: {e}")
             raise HTTPException(status_code=500, detail="Failed to process payment")
 
     lobby_id = str(uuid.uuid4())
     lobby = LobbyGame(
         id=lobby_id,
         host=request.host,
+        host_uid=request.host_uid,
         players=[request.host],
+        player_uids=[request.host_uid],
         max_players=request.max_players,
         entry_fee=request.entry_fee,
         created_at=datetime.now(),
@@ -293,8 +302,8 @@ async def join_lobby(lobby_id: str, request: JoinLobbyRequest):
     # Deduct entry fee from joining player's wallet if entry_fee > 0
     if lobby.entry_fee > 0:
         try:
-            # Get user document
-            user_ref = db.collection('users').document(player_name)
+            # Get user document using player_uid
+            user_ref = db.collection('users').document(request.player_uid)
             user_doc = user_ref.get()
             if not user_doc.exists:
                 raise HTTPException(status_code=404, detail="User not found")
@@ -323,19 +332,21 @@ async def join_lobby(lobby_id: str, request: JoinLobbyRequest):
                 return balance - lobby.entry_fee
             
             new_balance = deduct_fee(db.transaction())
-            logger.info(f"Deducted {lobby.entry_fee} from {player_name}, new balance: {new_balance}")
+            logger.info(f"Deducted {lobby.entry_fee} from {request.player_uid}, new balance: {new_balance}")
             
+        except HTTPException:
+            raise
         except Exception as e:
-            logger.error(f"Failed to deduct entry fee from {player_name}: {e}")
+            logger.error(f"Failed to deduct entry fee from {request.player_uid}: {e}")
             raise HTTPException(status_code=500, detail="Failed to process payment")
 
     # CRITICAL FIX: Create game when second player joins
     if len(lobby.players) == 1:  # This is the second player → start the game!
-        game_state = new_game_state("multiplayer", lobby.host, max_players=lobby.max_players, entry_fee=lobby.entry_fee)
+        game_state = new_game_state("multiplayer", lobby.host, player_uid=lobby.host_uid, max_players=lobby.max_players, entry_fee=lobby.entry_fee)
         active_games[game_state.id] = game_state
 
         # Add joining player to the game with 3 cards
-        game_state.players.append(Player(name=player_name, hand=[]))
+        game_state.players.append(Player(name=player_name, uid=request.player_uid, hand=[]))
         for _ in range(3):
             if game_state.deck:
                 game_state.players[-1].hand.append(game_state.deck.pop())
@@ -346,7 +357,7 @@ async def join_lobby(lobby_id: str, request: JoinLobbyRequest):
         # Subsequent players joining an already started lobby (if max_players > 2)
         game_state = active_games.get(lobby.game_id)
         if game_state:
-            game_state.players.append(Player(name=player_name, hand=[]))
+            game_state.players.append(Player(name=player_name, uid=request.player_uid, hand=[]))
             for _ in range(3):
                 if game_state.deck:
                     game_state.players[-1].hand.append(game_state.deck.pop())
@@ -362,6 +373,9 @@ async def join_lobby(lobby_id: str, request: JoinLobbyRequest):
 
     # Now add player to lobby list
     lobby.players.append(player_name)
+    if not hasattr(lobby, 'player_uids'):
+        lobby.player_uids = [lobby.host_uid]
+    lobby.player_uids.append(request.player_uid)
     lobby.last_updated = datetime.now()
 
     # Notify everyone (host will now see game_id and switch screen)
@@ -394,13 +408,14 @@ async def list_lobbies():
 async def create_game(
     mode: str = Query("tutorial", description="Game mode: tutorial only for this endpoint"),
     player_name: str = Query("Player", description="Player name"),
+    player_uid: str = Query("", description="Player UID"),
     cpu_count: int = Query(1, description="Number of CPU players (for tutorial)"),
     entry_fee: int = Query(0, description="Entry fee (0 for tutorial)")
 ):
     if mode != "tutorial":
         raise HTTPException(status_code=400, detail="Invalid mode. This endpoint is for 'tutorial' only. Use lobby for 'multiplayer'.")
     
-    game = new_game_state(mode, player_name, cpu_count=cpu_count)
+    game = new_game_state(mode, player_name, player_uid=player_uid, cpu_count=cpu_count)
     active_games[game.id] = game
     logger.info(f"Game created: {game.id} in {mode} mode by {player_name}")
     return game.dict()
@@ -552,8 +567,12 @@ async def distribute_winnings(game: GameState):
         house_cut = int(game.pot_amount * 0.1)
         winner_amount = game.pot_amount - house_cut
         
-        # Update winner's wallet
-        winner_ref = db.collection('users').document(game.winner)
+        # Get winner's UID
+        winner_player = next((p for p in game.players if p.name == game.winner), None)
+        winner_uid = winner_player.uid if winner_player else game.winner # Fallback to name if UID not set (old games)
+        
+        # Update winner's wallet using winner_uid
+        winner_ref = db.collection('users').document(winner_uid)
         
         @firestore.transactional
         def update_winner_wallet(transaction):

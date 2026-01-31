@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import type { GameState, LobbyGame, LoadingStates } from '../types/game';
 import { GameService, WS_API } from '../services/gameService';
+import { useAuth } from './AuthContext';
 
 interface GameContextType {
     // Player state
@@ -72,6 +73,7 @@ interface GameProviderProps {
 }
 
 export const GameProvider = ({ children, playerName, setPlayerName }: GameProviderProps) => {
+    const { currentUser } = useAuth();
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [gameId, setGameId] = useState<string | null>(null);
     const [lobby, setLobby] = useState<LobbyGame | null>(null);
@@ -235,8 +237,10 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         setLoadingStates(prev => ({ ...prev, starting: true }));
         setError(null);
         try {
+            if (!currentUser) throw new Error("User must be logged in to create a game");
+            
             // Create lobby first
-            const newLobby = await gameService.createLobby(playerName, numPlayers, entryFee);
+            const newLobby = await gameService.createLobby(playerName, currentUser.uid, numPlayers, entryFee);
             setLobby(newLobby);
 
             // WE DO NOT START THE GAME HERE
@@ -251,14 +255,16 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         } finally {
             setLoadingStates(prev => ({ ...prev, starting: false }));
         }
-    }, [playerName, gameService]);
+    }, [playerName, gameService, currentUser]);
 
     const joinLobby = useCallback(async (lobbyId: string) => {
         setLoadingStates(prev => ({ ...prev, joining: true }));
         setError(null);
         try {
+            if (!currentUser) throw new Error("User must be logged in to join a game");
+
             // Join the lobby
-            const response = await gameService.joinLobby(lobbyId, playerName);
+            const response = await gameService.joinLobby(lobbyId, playerName, currentUser.uid);
             setLobby(response.lobby);
 
             // If the backend returned a game (meaning the lobby is full and game started), use it
@@ -296,7 +302,7 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         } finally {
             setLoadingStates(prev => ({ ...prev, joining: false }));
         }
-    }, [playerName, gameService]);
+    }, [playerName, gameService, currentUser]);
 
     const drawCard = useCallback(async () => {
         setLoadingStates(prev => ({ ...prev, drawing: true }));
@@ -374,7 +380,7 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         setLoadingStates(prev => ({ ...prev, starting: true }));
         try {
             console.log("[GameContext] Requesting tutorial game...");
-            const game = await gameService.createNewGame("tutorial", playerName, 1, 0);
+            const game = await gameService.createNewGame("tutorial", playerName, currentUser?.uid || "", 1, 0);
             console.log("[GameContext] Tutorial game created:", JSON.stringify(game));
             
             setGameState(game);
@@ -387,7 +393,7 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         } finally {
             setLoadingStates(prev => ({ ...prev, starting: false }));
         }
-    }, [playerName, gameService]);
+    }, [playerName, gameService, currentUser]);
 
     const nextTutorialStep = useCallback(() => {
         setTutorialStep(prev => prev + 1);
