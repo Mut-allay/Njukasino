@@ -48,25 +48,25 @@ export class GameService {
     }
   }
 
-  async createLobby(host: string, maxPlayers: number, entryFee: number = 0): Promise<LobbyGame> {
+  async createLobby(host: string, hostUid: string, maxPlayers: number, entryFee: number = 0): Promise<LobbyGame> {
     return this.fetchWithErrorHandling(
       `${API}/lobby/create`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ host, max_players: maxPlayers, entry_fee: entryFee }),
+        body: JSON.stringify({ host, host_uid: hostUid, max_players: maxPlayers, entry_fee: entryFee }),
       },
       'createLobby'
     ) as Promise<LobbyGame>;
   }
 
-  async joinLobby(lobbyId: string, player: string): Promise<{ lobby: LobbyGame; game: GameState | null }> {
+  async joinLobby(lobbyId: string, player: string, playerUid: string): Promise<{ lobby: LobbyGame; game: GameState | null }> {
     return this.fetchWithErrorHandling(
       `${API}/lobby/${lobbyId}/join`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ player }),
+        body: JSON.stringify({ player, player_uid: playerUid }),
       },
       'joinLobby'
     ) as Promise<{ lobby: LobbyGame; game: GameState | null; }>;
@@ -113,11 +113,12 @@ export class GameService {
   async createNewGame(
     mode: string,
     playerName: string,
+    playerUid: string = "",
     cpuCount: number = 1,
     entryFee: number = 0
   ): Promise<GameState> {
     return this.fetchWithErrorHandling(
-      `${API}/new_game?mode=${mode}&player_name=${encodeURIComponent(playerName)}&cpu_count=${cpuCount}&entry_fee=${entryFee}`,
+      `${API}/new_game?mode=${mode}&player_name=${encodeURIComponent(playerName)}&player_uid=${playerUid}&cpu_count=${cpuCount}&entry_fee=${entryFee}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
