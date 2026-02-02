@@ -35,6 +35,7 @@ type GameState = {
   winner?: string
   winner_hand?: CardType[]
   game_over?: boolean
+  any_player_has_drawn?: boolean
 }
 
 export interface GameTableProps {

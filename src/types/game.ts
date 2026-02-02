@@ -30,6 +30,7 @@ export type GameState = {
   winner?: string;
   winner_hand?: CardType[];
   game_over?: boolean;
+  any_player_has_drawn?: boolean;
   winner_amount?: number;
   house_cut?: number;
 };
@@ -43,6 +44,7 @@ export type LobbyGame = {
   started?: boolean;
   game_id?: string;
   entry_fee?: number;
+  host_uid?: string;
 };
 
 export type LoadingStates = {
