@@ -182,6 +182,49 @@
 }
 
 /* ===================================
+   WIN BREAKDOWN
+   =================================== */
+.win-amount-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.win-breakdown {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 1rem;
+  width: min(100%, 300px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  border: 1px solid rgba(255, 215, 0, 0.1);
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.breakdown-item.house-deduction {
+  color: #ff4757;
+  font-size: 0.85rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.breakdown-item.net-win {
+  color: #ffd700;
+  font-weight: 800;
+  font-size: 1.1rem;
+  margin-top: 0.25rem;
+}
+
+/* ===================================
    WINNING HAND SECTION
    =================================== */
 .winning-hand-section {

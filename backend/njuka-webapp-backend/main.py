@@ -88,6 +88,8 @@ class GameState(BaseModel):
     game_over: bool = False
     entry_fee: int = 0
     pot_amount: int = 0
+    winner_amount: float = 0
+    house_cut: float = 0
 
 class LobbyGame(BaseModel):
     id: str
@@ -431,6 +433,8 @@ async def draw_card(game_id: str):
     game = active_games.get(game_id)
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
+    if game.game_over:
+        return game.dict()
     if not game.deck:
         raise HTTPException(status_code=400, detail="Deck empty")
     if game.has_drawn:
@@ -457,6 +461,8 @@ async def discard_card(game_id: str, card_index: int = Query(...)):
         raise HTTPException(status_code=404, detail="Game not found")
 
     game = active_games[game_id]
+    if game.game_over:
+        return game.dict()
     player = game.players[game.current_player]
 
     if not game.has_drawn:
@@ -585,8 +591,13 @@ async def distribute_winnings(game: GameState):
     
     try:
         # Calculate winnings: 90% to winner, 10% to house
-        house_cut = int(game.pot_amount * 0.1)
-        winner_amount = game.pot_amount - house_cut
+        # Use round to handle floats and convert to float for transparency
+        house_cut = round(game.pot_amount * 0.1, 2)
+        winner_amount = round(game.pot_amount - house_cut, 2)
+        
+        # Store in game state for frontend
+        game.house_cut = house_cut
+        game.winner_amount = winner_amount
         
         # Get winner's UID
         winner_player = next((p for p in game.players if p.name == game.winner), None)

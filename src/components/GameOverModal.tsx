@@ -32,6 +32,8 @@ export interface GameOverModalProps {
   winnerHand?: Array<{ value: string; suit: string }>
   onNewGame: () => void
   winAmount?: string | number
+  houseCut?: number
+  winnerAmount?: number
 }
 
 export const GameOverModal: React.FC<GameOverModalProps> = ({
@@ -40,7 +42,9 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   winner,
   winnerHand,
   onNewGame,
-  winAmount
+  winAmount,
+  houseCut,
+  winnerAmount
 }) => {
   // Trigger confetti when modal opens
   useEffect(() => {
@@ -112,8 +116,26 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
         
         {/* Win Amount */}
         {formattedWinAmount && (
-          <div className="win-amount" aria-label={`Prize: ${formattedWinAmount}`}>
-            {formattedWinAmount}
+          <div className="win-amount-container">
+            <div className="win-amount" aria-label={`Prize: ${formattedWinAmount}`}>
+              {formattedWinAmount}
+            </div>
+            {(houseCut !== undefined && winnerAmount !== undefined) && (
+              <div className="win-breakdown">
+                <div className="breakdown-item">
+                  <span>Gross Pot:</span>
+                  <span>K{winAmount}</span>
+                </div>
+                <div className="breakdown-item house-deduction">
+                  <span>House Cut (10%):</span>
+                  <span>-K{houseCut}</span>
+                </div>
+                <div className="breakdown-item net-win">
+                  <span>Your Net Win:</span>
+                  <span>K{winnerAmount}</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
         

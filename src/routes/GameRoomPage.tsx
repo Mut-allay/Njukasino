@@ -325,6 +325,8 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
                 winnerHand={gameState.winner_hand}
                 onNewGame={handleQuitGame}
                 winAmount={gameState.pot_amount}
+                winnerAmount={gameState.winner_amount}
+                houseCut={gameState.house_cut}
             />
             )}
         </div>
