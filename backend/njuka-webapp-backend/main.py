@@ -1,8 +1,8 @@
-from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import random
-from typing import List, Dict, Optional, Set
+from typing import Annotated, List, Dict, Optional, Set
 import uuid
 from fastapi.responses import JSONResponse
 from datetime import datetime, timedelta
@@ -488,6 +488,27 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+# Admin endpoints
+from auth import get_current_admin
+
+@app.get("/api/admin/house-balance")
+async def get_house_balance(
+    uid: Annotated[str, Depends(get_current_admin)],
+):
+    """Return total house earnings from Firestore house/admin document."""
+    try:
+        house_ref = db.collection('house').document('admin')
+        doc = house_ref.get()
+        if doc.exists:
+            balance = doc.to_dict().get('wallet_balance', 0)
+        else:
+            balance = 0
+        return {"house_balance": balance}
+    except Exception as e:
+        logger.error(f"Error fetching house balance: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch house balance")
 
 # WebSocket Endpoints
 @app.websocket("/ws/game/{game_id}")

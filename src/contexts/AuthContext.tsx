@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 // src/contexts/AuthContext.tsx
 
 import { createContext, useContext, useState, useEffect } from 'react';
@@ -26,6 +27,7 @@ interface UserData {
   email?: string;
   wallet?: number;
   wallet_balance?: number;
+  is_admin?: boolean;
 }
 
 interface AuthContextType {
@@ -40,6 +42,7 @@ interface AuthContextType {
     lastName?: string
   ) => Promise<UserCredential | null>;
   signInWithPhonePassword: (phone: string, password: string) => Promise<UserCredential | null>;
+  signInWithEmail: (email: string, password: string) => Promise<UserCredential | null>;
   logout: () => Promise<void>;
   refreshUserData: () => Promise<void>;
 }
@@ -198,6 +201,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const signInWithEmail = async (email: string, password: string) => {
+    setError(null);
+    try {
+      if (!email || !password) {
+        setError('Email and password are required.');
+        return null;
+      }
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      return userCredential;
+    } catch (err) {
+      if (err instanceof FirebaseError) {
+        switch (err.code) {
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+          case 'auth/invalid-credential':
+            setError('Invalid email or password.');
+            break;
+          case 'auth/too-many-requests':
+            setError('Too many failed attempts. Please try again later.');
+            break;
+          default:
+            setError(`Authentication error: ${err.code}`);
+        }
+      } else {
+        setError('An unexpected error occurred.');
+      }
+      return null;
+    }
+  };
+
   const logout = async () => {
     setError(null);
     try {
@@ -221,6 +254,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     error,
     signUpWithPhonePassword,
     signInWithPhonePassword,
+    signInWithEmail,
     logout,
     refreshUserData
   };

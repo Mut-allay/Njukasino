@@ -5,7 +5,7 @@ Verifies Bearer token via firebase_admin.auth.verify_id_token and returns uid.
 import logging
 from typing import Annotated
 
-from fastapi import Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 
 logger = logging.getLogger(__name__)
 
@@ -56,3 +56,38 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
         ) from e
+
+
+async def get_current_admin(
+    uid: Annotated[str, Depends(get_current_user)],
+) -> str:
+    """
+    Verify the user has admin privileges (is_admin: True in users/{uid}).
+    """
+    from firebase_admin import firestore
+    try:
+        db = firestore.client()
+        user_doc = db.collection("users").document(uid).get()
+        if not user_doc.exists:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+        
+        user_data = user_doc.to_dict()
+        if not user_data.get("is_admin"):
+            logger.warning("Admin access denied for user %s", uid)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Admin privileges required",
+            )
+        
+        return uid
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error verifying admin status for %s: %s", uid, e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to verify admin status",
+        )
