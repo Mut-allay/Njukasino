@@ -20,6 +20,8 @@ const AuthPage = lazy(() => import('./routes/AuthPage').then(module => ({ defaul
 const SignUpPage = lazy(() => import('./routes/SignUpPage').then(module => ({ default: module.SignUpPage })));
 const DepositPage = lazy(() => import('./routes/DepositPage').then(module => ({ default: module.DepositPage })));
 const WalletPage = lazy(() => import('./pages/WalletPage').then(module => ({ default: module.WalletPage })));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
+const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage').then(module => ({ default: module.AdminLoginPage })));
 
 // 🎵 SOUND MANAGER HOOK - Handles all game audio
 const useSoundManager = () => {
@@ -289,6 +291,8 @@ function AppContent({ soundsEnabled, toggleSounds, playSound }: AppContentProps)
           <Route path="/rules" element={<RulesPage />} />
           <Route path="/sign-in" element={currentUser ? <Navigate to="/" /> : <AuthPage />} />
           <Route path="/sign-up" element={currentUser ? <Navigate to="/" /> : <SignUpPage />} />
+          <Route path="/admin" element={currentUser && userData?.is_admin ? <AdminDashboard /> : <Navigate to="/admin/login" />} />
+          <Route path="/admin/login" element={currentUser && userData?.is_admin ? <Navigate to="/admin" /> : <AdminLoginPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
