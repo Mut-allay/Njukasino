@@ -5,6 +5,7 @@ import LazyGameTable from '../components/LazyGameTable';
 import LazyGameOverModal from '../components/LazyGameOverModal';
 import ErrorModal from '../components/ErrorModal';
 import LoadingOverlay from '../components/LoadingOverlay';
+import { useAuth } from '../contexts/AuthContext';
 
 interface GameRoomPageProps {
     playSound: (soundType: 'draw' | 'discard' | 'win' | 'button' | 'shuffle') => void;
@@ -28,8 +29,10 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
         drawCard,
         discardCard,
         quitGame,
+        cancelLobby,
         gameService,
     } = useGame();
+    const { currentUser } = useAuth();
 
     // Track if we are in the process of quitting to prevent re-sync
     const isQuittingRef = useRef(false);
@@ -187,8 +190,21 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
         console.log('[GameRoom] User quitting game');
         isQuittingRef.current = true;
         quitGame();
-        // Clear potential lingering URL params matching
         navigate('/', { replace: true });
+    };
+
+    const handleCancelLobby = async () => {
+        if (!lobby) return;
+        console.log('[GameRoom] Host cancelling lobby');
+        isQuittingRef.current = true;
+        try {
+            await cancelLobby(lobby.id);
+            playSound('button');
+            navigate('/multiplayer', { replace: true });
+        } catch (err) {
+            console.error('Cancel lobby failed:', err);
+            isQuittingRef.current = false; // Allow retry if it failed
+        }
     };
 
     const handleDiscard = async (index: number) => {
@@ -261,9 +277,26 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
                     <div>Players: {gameState.players.length}/{gameState.max_players}</div>
                     <div>Has Drawn: {gameState.has_drawn ? 'Yes' : 'No'}</div>
                     <div>Pot: {gameState.pot.length} cards</div>
+                    <div>Pot: {gameState.pot.length} cards</div>
                     <div>Host: {lobby?.host}</div>
                     <div>You: {playerName}</div>
-                    <div>Is Host: {lobby?.host === playerName ? 'Yes' : 'No'}</div>
+                    <div>Is Host: {lobby?.host_uid === currentUser?.uid ? 'Yes' : 'No'}</div>
+                    
+                    {/* Cancellation button for started games before any move */}
+                    {lobby?.host_uid === currentUser?.uid && !gameState.any_player_has_drawn && !gameState.game_over && (
+                        <button
+                            onClick={handleCancelLobby}
+                            disabled={loadingStates.starting}
+                            style={{
+                                marginTop: '10px',
+                                background: '#f44336',
+                                fontSize: '0.8em',
+                                padding: '5px 10px'
+                            }}
+                        >
+                            {loadingStates.starting ? "Cancelling..." : "Cancel Game & Refund"}
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -283,12 +316,15 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
                     minWidth: '300px'
                 }}>
                     <h3>Waiting for players to join...</h3>
-                    <div style={{ margin: '20px 0', fontSize: '1.2em' }}>
+                    <div style={{ margin: '15px 0', fontSize: '1.2em' }}>
+                        Entry Fee: <span style={{ color: '#ffd700', fontWeight: 'bold' }}>K{lobby.entry_fee || 0}</span>
+                    </div>
+                    <div style={{ margin: '15px 0', fontSize: '1.2em' }}>
                         Players: {lobby.players.length}/{lobby.max_players}
                     </div>
-                    {lobby.host === playerName && (
+                    {lobby.host_uid === currentUser?.uid && (
                         <button
-                            onClick={handleQuitGame}
+                            onClick={handleCancelLobby}
                             disabled={loadingStates.starting}
                             style={{
                                 background: '#f44336',

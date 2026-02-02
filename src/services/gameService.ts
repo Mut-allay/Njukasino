@@ -138,9 +138,9 @@ export class GameService {
     ) as Promise<GameState>;
   }
 
-  async cancelLobby(lobbyId: string, hostName: string): Promise<void> {
+  async cancelLobby(lobbyId: string, hostUid: string): Promise<void> {
     await this.fetchWithErrorHandling(
-      `${API}/lobby/cancel?lobby_id=${lobbyId}&host_name=${encodeURIComponent(hostName)}`,
+      `${API}/lobby/${lobbyId}/cancel?host_uid=${encodeURIComponent(hostUid)}`,
       { method: 'POST' },
       'cancelLobby'
     );

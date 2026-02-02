@@ -126,6 +126,7 @@ export const MultiplayerPage = ({
                     <p className="lobby-stats">
                       <UsersIcon size={14} /> 
                       <span>{lobby.players?.length || 0} / {lobby.max_players} Players</span>
+                      <span className="fee-badge">K{lobby.entry_fee || 0}</span>
                     </p>
                     <div className="player-list-preview">
                       {(lobby.players || []).map((player) => (

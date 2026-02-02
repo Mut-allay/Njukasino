@@ -90,6 +90,7 @@ class GameState(BaseModel):
     pot_amount: int = 0
     winner_amount: float = 0
     house_cut: float = 0
+    any_player_has_drawn: bool = False
 
 class LobbyGame(BaseModel):
     id: str
@@ -406,6 +407,82 @@ async def list_lobbies():
             del active_lobbies[lid]
     return list(active_lobbies.values())
 
+@app.post("/lobby/{lobby_id}/cancel")
+async def cancel_lobby(lobby_id: str, host_uid: str = Query(...)):
+    if lobby_id not in active_lobbies:
+        raise HTTPException(status_code=404, detail="Lobby not found")
+
+    lobby = active_lobbies[lobby_id]
+    
+    # Verify host
+    if lobby.host_uid != host_uid:
+        raise HTTPException(status_code=403, detail="Only the host can cancel the lobby")
+
+    if lobby.started:
+        # Check if the game has actually had any cards drawn
+        if lobby.game_id in active_games:
+            game = active_games[lobby.game_id]
+            if game.any_player_has_drawn:
+                raise HTTPException(status_code=400, detail="Cannot cancel a game that has already started and moves have been made")
+            # If no cards drawn, we can still cancel. Delete the game state.
+            del active_games[lobby.game_id]
+            logger.info(f"Deleted game state {lobby.game_id} during cancel")
+        else:
+            # Lobby says started but game state is missing - weird, but proceed with cancellation
+            pass
+
+    # Refund all participants
+    if lobby.entry_fee > 0:
+        participants = set(lobby.player_uids)
+        if lobby.host_uid:
+            participants.add(lobby.host_uid)
+            
+        for p_uid in participants:
+            try:
+                user_ref = db.collection('users').document(p_uid)
+                
+                @firestore.transactional
+                def refund_transaction(transaction):
+                    snapshot = user_ref.get(transaction=transaction)
+                    if snapshot.exists:
+                        data = snapshot.to_dict()
+                        balance = data.get('wallet_balance', 0)
+                        transaction.update(user_ref, {'wallet_balance': balance + lobby.entry_fee})
+                        return balance + lobby.entry_fee
+                    return None
+                
+                new_balance = refund_transaction(db.transaction())
+                if new_balance is not None:
+                    logger.info(f"Refunded {lobby.entry_fee} to {p_uid}, new balance: {new_balance}")
+                    
+                    # Log refund transaction
+                    db.collection('transactions').add({
+                        'type': 'lobby_refund',
+                        'lobby_id': lobby_id,
+                        'user_uid': p_uid,
+                        'amount': lobby.entry_fee,
+                        'timestamp': firestore.SERVER_TIMESTAMP
+                    })
+            except Exception as e:
+                logger.error(f"Failed to refund {p_uid} for lobby {lobby_id}: {e}")
+
+    # Notify participants via WebSocket
+    message = json.dumps({"type": "lobby_cancelled", "data": {"lobby_id": lobby_id}})
+    if lobby_id in manager.lobby_connections:
+        disconnected = []
+        for ws in manager.lobby_connections[lobby_id]:
+            try:
+                await ws.send_text(message)
+            except:
+                disconnected.append(ws)
+        for ws in disconnected:
+            manager.disconnect_from_lobby(ws, lobby_id)
+
+    # Delete lobby
+    del active_lobbies[lobby_id]
+    logger.info(f"Lobby cancelled: {lobby_id}")
+    return {"status": "success", "message": "Lobby cancelled and participants refunded"}
+
 @app.post("/new_game")
 async def create_game(
     mode: str = Query("tutorial", description="Game mode: tutorial only for this endpoint"),
@@ -443,6 +520,7 @@ async def draw_card(game_id: str):
     card = game.deck.pop()
     game.players[game.current_player].hand.append(card)
     game.has_drawn = True
+    game.any_player_has_drawn = True
 
     winner, hand = check_any_player_win(game.players, game.pot)
     if winner:

@@ -225,6 +225,17 @@ button {
   color: #f8d56b;
 }
 
+.fee-badge {
+  background: rgba(248, 213, 107, 0.2);
+  color: #f8d56b;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: bold;
+  margin-left: 10px;
+  border: 1px solid rgba(248, 213, 107, 0.4);
+}
+
 .player-list {
   background: rgba(0, 0, 0, 0.2);
   padding: 10px;

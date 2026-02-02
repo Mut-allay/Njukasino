@@ -34,6 +34,7 @@ interface GameContextType {
     drawCard: () => Promise<void>;
     discardCard: (index: number) => Promise<void>;
     quitGame: () => void;
+    cancelLobby: (lobbyId: string) => Promise<void>;
     refreshLobbies: () => Promise<void>;
 
     // Tutorial state
@@ -100,6 +101,25 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
     // Initialize game service (use useMemo to avoid recreating on every render)
     const gameService = useMemo(() => new GameService(), []);
 
+    const quitGame = useCallback(() => {
+        console.log("[GameContext] Quitting game - clearing all state");
+        // Close WebSocket connections
+        if (gameWS) {
+            gameWS.close();
+            setGameWS(null);
+        }
+        if (lobbyWS) {
+            lobbyWS.close();
+            setLobbyWS(null);
+        }
+
+        // ⬇️ FORCE CLEAR EVERYTHING
+        setGameState(null);
+        setLobby(null);
+        setGameId(null);
+        setError(null);
+    }, [gameWS, lobbyWS]);
+
     // WebSocket connection for lobby room updates
     const lobbyIdForWS = lobby?.id;
     useEffect(() => {
@@ -126,6 +146,10 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
                                 setError(error.message);
                             });
                     }
+                } else if (message.type === 'lobby_cancelled') {
+                    console.log('[GameContext] Lobby cancelled by host');
+                    setError("The host has cancelled the game room. Any entry fees have been refunded.");
+                    quitGame();
                 }
             };
             ws.onclose = () => {
@@ -142,7 +166,7 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
                 setLobbyWS(null);
             };
         }
-    }, [lobbyIdForWS, gameService]);
+    }, [lobbyIdForWS, gameService, quitGame]);
 
     // WebSocket connection for game updates (multiplayer only)
     const gameStateIdForWS = gameState?.id;
@@ -333,24 +357,23 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         }
     }, [gameState, gameService]);
 
-    const quitGame = useCallback(() => {
-        console.log("[GameContext] Quitting game - clearing all state");
-        // Close WebSocket connections
-        if (gameWS) {
-            gameWS.close();
-            setGameWS(null);
-        }
-        if (lobbyWS) {
-            lobbyWS.close();
-            setLobbyWS(null);
-        }
-
-        // ⬇️ FORCE CLEAR EVERYTHING
-        setGameState(null);
-        setLobby(null);
-        setGameId(null);
+    const cancelLobby = useCallback(async (lobbyId: string) => {
+        setLoadingStates(prev => ({ ...prev, starting: true }));
         setError(null);
-    }, [gameWS, lobbyWS]);
+        try {
+            if (!currentUser) throw new Error("User not logged in");
+            await gameService.cancelLobby(lobbyId, currentUser.uid);
+            // Clear local state
+            setLobby(null);
+            setGameState(null);
+            setGameId(null);
+        } catch (error: unknown) {
+            setError(error instanceof Error ? error.message : "Failed to cancel lobby");
+            throw error;
+        } finally {
+            setLoadingStates(prev => ({ ...prev, starting: false }));
+        }
+    }, [gameService, currentUser]);
 
     const refreshLobbies = useCallback(async () => {
         try {
@@ -422,6 +445,7 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         drawCard,
         discardCard,
         quitGame,
+        cancelLobby,
         refreshLobbies,
         gameService,
         isTutorial,
