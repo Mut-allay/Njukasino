@@ -86,7 +86,9 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
                 setExitedPlayer(message.data.player_name);
                 setTimeout(() => setExitedPlayer(null), 5000); // Clear after 5s
             }
-            if (originalOnMessage) originalOnMessage(event);
+            if (originalOnMessage) {
+                originalOnMessage.call(gameWS, event);
+            }
         };
     }, [gameWS]);
 
