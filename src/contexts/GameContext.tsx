@@ -35,6 +35,8 @@ interface GameContextType {
     discardCard: (index: number) => Promise<void>;
     quitGame: () => void;
     cancelLobby: (lobbyId: string) => Promise<void>;
+    quitLobby: (lobbyId: string) => Promise<void>;
+    startLobby: (lobbyId: string) => Promise<void>;
     refreshLobbies: () => Promise<void>;
 
     // Tutorial state
@@ -375,6 +377,40 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         }
     }, [gameService, currentUser]);
 
+    const quitLobby = useCallback(async (lobbyId: string) => {
+        setLoadingStates(prev => ({ ...prev, joining: true }));
+        setError(null);
+        try {
+            if (!currentUser) throw new Error("User not logged in");
+            await gameService.quitLobby(lobbyId, currentUser.uid);
+            setLobby(null);
+            setGameState(null);
+            setGameId(null);
+        } catch (error: unknown) {
+            setError(error instanceof Error ? error.message : "Failed to quit lobby");
+            throw error;
+        } finally {
+            setLoadingStates(prev => ({ ...prev, joining: false }));
+        }
+    }, [gameService, currentUser]);
+
+    const startLobby = useCallback(async (lobbyId: string) => {
+        setLoadingStates(prev => ({ ...prev, starting: true }));
+        setError(null);
+        try {
+            if (!currentUser) throw new Error("User not logged in");
+            const response = await gameService.startLobby(lobbyId, currentUser.uid);
+            setLobby(response.lobby);
+            setGameState(response.game);
+            setGameId(response.game.id);
+        } catch (error: unknown) {
+            setError(error instanceof Error ? error.message : "Failed to start lobby");
+            throw error;
+        } finally {
+            setLoadingStates(prev => ({ ...prev, starting: false }));
+        }
+    }, [gameService, currentUser]);
+
     const refreshLobbies = useCallback(async () => {
         try {
             const lobbies = await gameService.getLobbies();
@@ -446,6 +482,8 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         discardCard,
         quitGame,
         cancelLobby,
+        quitLobby,
+        startLobby,
         refreshLobbies,
         gameService,
         isTutorial,

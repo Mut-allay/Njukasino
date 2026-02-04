@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useGame } from '../contexts/GameContext';
 import LazyGameTable from '../components/LazyGameTable';
 import LazyGameOverModal from '../components/LazyGameOverModal';
@@ -30,12 +30,16 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
         discardCard,
         quitGame,
         cancelLobby,
+        quitLobby,
+        startLobby,
         gameService,
     } = useGame();
     const { currentUser } = useAuth();
 
     // Track if we are in the process of quitting to prevent re-sync
     const isQuittingRef = useRef(false);
+
+    const [exitedPlayer, setExitedPlayer] = useState<string | null>(null);
 
     // Initial state sync from URL params
     useEffect(() => {
@@ -65,130 +69,44 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
                 }
             } catch (err) {
                 console.error('[GameRoom] Sync error:', err);
-                // Don't show full screen error for background sync
             }
         };
 
         syncState();
     }, [lobbyId, urlGameId, lobby, gameId, gameState, gameService, setLobby, setGameId, setGameState]);
 
-    // CPU turn processing refs
-    const cpuProcessingRef = useRef(false);
-    const processingPlayerRef = useRef<number | null>(null);
-
-    // CPU turn processing - automatically handle CPU moves
+    // Handle "Player Exited" WebSocket messages
     useEffect(() => {
-        if (!gameState || gameState.mode !== 'cpu' || gameState.game_over) {
-            cpuProcessingRef.current = false;
-            processingPlayerRef.current = null;
-            return;
-        }
+        if (!gameWS) return;
+        
+        const originalOnMessage = gameWS.onmessage;
+        gameWS.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            if (message.type === 'player_exited') {
+                setExitedPlayer(message.data.player_name);
+                setTimeout(() => setExitedPlayer(null), 5000); // Clear after 5s
+            }
+            if (originalOnMessage) {
+                originalOnMessage.call(gameWS, event);
+            }
+        };
+    }, [gameWS]);
 
-        const currentPlayer = gameState.players[gameState.current_player];
-        if (!currentPlayer || !currentPlayer.is_cpu) {
-            // Not a CPU turn - reset processing flags
-            cpuProcessingRef.current = false;
-            processingPlayerRef.current = null;
-            return;
-        }
-
-        // Check if we're already processing this specific player's turn
-        const currentPlayerIndex = gameState.current_player;
-        if (cpuProcessingRef.current && processingPlayerRef.current === currentPlayerIndex) {
-            // Already processing this player's turn
-            return;
-        }
-
-        // New CPU turn - mark as processing
-        cpuProcessingRef.current = true;
-        processingPlayerRef.current = currentPlayerIndex;
-
-        console.log(`CPU turn detected: ${currentPlayer.name}, has_drawn: ${gameState.has_drawn}`);
-
-        // Check if CPU needs to draw
-        if (!gameState.has_drawn) {
-            console.log(`CPU ${currentPlayer.name} drawing card...`);
-
-            // CPU draws a card
-            gameService.drawCard(gameState.id)
-                .then((newState) => {
-                    console.log(`CPU ${currentPlayer.name} drew card. New state - has_drawn: ${newState.has_drawn}, current_player: ${newState.current_player}`);
-                    playSound('draw');
-
-                    // After drawing, CPU needs to discard
-                    // Wait a bit for visual feedback, then discard
-                    const gameIdToUse = newState.id;
-                    const currentPlayerIndex = newState.current_player;
-
-                    setTimeout(() => {
-                        // Fetch latest state before discarding to avoid stale data
-                        gameService.getGame(gameIdToUse)
-                            .then((latestState) => {
-                                // Verify it's still the CPU's turn and they have drawn
-                                const latestCurrentPlayer = latestState.players[latestState.current_player];
-                                if (latestCurrentPlayer && latestCurrentPlayer.is_cpu &&
-                                    latestState.current_player === currentPlayerIndex &&
-                                    latestState.has_drawn &&
-                                    latestState.players[latestState.current_player].hand.length > 0) {
-
-                                    // CPU discards the first card (simple strategy)
-                                    const discardIndex = 0;
-                                    console.log(`CPU ${latestCurrentPlayer.name} discarding card at index ${discardIndex}...`);
-
-                                    return gameService.discardCard(gameIdToUse, discardIndex)
-                                        .then((finalState) => {
-                                            console.log(`CPU ${latestCurrentPlayer.name} discarded. New current_player: ${finalState.current_player}`);
-                                            playSound('discard');
-                                            cpuProcessingRef.current = false;
-                                            processingPlayerRef.current = null;
-                                        })
-                                        .catch((error) => {
-                                            console.error('CPU discard failed:', error);
-                                            cpuProcessingRef.current = false;
-                                            processingPlayerRef.current = null;
-                                        });
-                                } else {
-                                    console.log('CPU turn state changed, skipping discard');
-                                    cpuProcessingRef.current = false;
-                                    processingPlayerRef.current = null;
-                                }
-                            })
-                            .catch((error) => {
-                                console.error('Failed to fetch latest game state for CPU discard:', error);
-                                cpuProcessingRef.current = false;
-                                processingPlayerRef.current = null;
-                            });
-                    }, 1500); // 1.5 second delay between draw and discard
-                })
-                .catch((error) => {
-                    console.error('CPU draw failed:', error);
-                    cpuProcessingRef.current = false;
-                    processingPlayerRef.current = null;
-                });
-        } else {
-            // CPU has drawn but needs to discard
-            console.log(`CPU ${currentPlayer.name} discarding card (already drawn)...`);
-
-            // CPU discards the first card
-            const discardIndex = 0;
-            gameService.discardCard(gameState.id, discardIndex)
-                .then((newState) => {
-                    console.log(`CPU ${currentPlayer.name} discarded. New current_player: ${newState.current_player}`);
-                    playSound('discard');
-                    cpuProcessingRef.current = false;
-                    processingPlayerRef.current = null;
-                })
-                .catch((error) => {
-                    console.error('CPU discard failed:', error);
-                    cpuProcessingRef.current = false;
-                    processingPlayerRef.current = null;
-                });
-        }
-    }, [gameState, gameService, playSound]);
+    // CPU turn processing refs
+    // ... rest of refs
 
     const handleQuitGame = () => {
         console.log('[GameRoom] User quitting game');
         isQuittingRef.current = true;
+        
+        // Notify others before clearing local state if game is live
+        if (gameWS && gameWS.readyState === WebSocket.OPEN && playerName) {
+            gameWS.send(JSON.stringify({
+                type: 'player_exit',
+                data: { player_name: playerName }
+            }));
+        }
+
         quitGame();
         navigate('/', { replace: true });
     };
@@ -202,8 +120,39 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
             playSound('button');
             navigate('/multiplayer', { replace: true });
         } catch (err) {
-            console.error('Cancel lobby failed:', err);
-            isQuittingRef.current = false; // Allow retry if it failed
+            const error = err as Error;
+            console.error('Cancel lobby failed:', error);
+            setError(error.message || "Cannot cancel game room once a move has been made.");
+            isQuittingRef.current = false;
+        }
+    };
+
+    const handleQuitLobby = async () => {
+        if (!lobby) return;
+        console.log('[GameRoom] Player quitting lobby');
+        isQuittingRef.current = true;
+        try {
+            await quitLobby(lobby.id);
+            playSound('button');
+            navigate('/multiplayer', { replace: true });
+        } catch (err) {
+            const error = err as Error;
+            console.error('Quit lobby failed:', error);
+            setError(error.message || "Failed to quit lobby.");
+            isQuittingRef.current = false;
+        }
+    };
+
+    const handleStartLobby = async () => {
+        if (!lobby) return;
+        console.log('[GameRoom] Host starting game manually');
+        try {
+            await startLobby(lobby.id);
+            playSound('button');
+        } catch (err) {
+            const error = err as Error;
+            console.error('Start lobby failed:', error);
+            setError(error.message || "Failed to start lobby.");
         }
     };
 
@@ -227,6 +176,8 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
         );
     }
 
+    const isWaitingForPlayers = lobby && !lobby.started;
+
     return (
         <div className="game-container">
             <ErrorModal
@@ -243,11 +194,31 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
                 message={loadingStates.cpuMoving ? "CPU is thinking..." : "Connecting to game server..."}
             />
 
+            {/* Exit Notification Overlay */}
+            {exitedPlayer && (
+                <div style={{
+                    position: 'fixed',
+                    top: '80px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: 'rgba(244, 67, 54, 0.9)',
+                    color: 'white',
+                    padding: '10px 20px',
+                    borderRadius: '20px',
+                    zIndex: 2000,
+                    fontWeight: 'bold',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+                    animation: 'fadeInOut 5s forwards'
+                }}>
+                    🚶 {exitedPlayer} has exited the game
+                </div>
+            )}
+
             {/* WebSocket Status Indicator for Multiplayer */}
             {gameState && gameState.mode === 'multiplayer' && (
                 <div className="websocket-status" style={{
                     position: 'fixed',
-                    top: '10px',
+                    bottom: '10px',
                     right: '10px',
                     background: gameWS?.readyState === WebSocket.OPEN ? '#4CAF50' : '#f44336',
                     color: 'white',
@@ -260,97 +231,129 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
                 </div>
             )}
 
-            {/* Debug Info for Multiplayer */}
-            {gameState && gameState.mode === 'multiplayer' && (
+            {/* Game Table (Blurred if waiting) */}
+            {gameState && (
                 <div style={{
-                    position: 'fixed',
-                    top: '10px',
-                    left: '10px',
-                    background: 'rgba(0, 0, 0, 0.8)',
-                    color: 'white',
-                    padding: '8px',
-                    borderRadius: '4px',
-                    fontSize: '10px',
-                    zIndex: 1000,
-                    maxWidth: '200px'
+                    filter: isWaitingForPlayers ? 'blur(10px) brightness(0.7)' : 'none',
+                    transition: 'filter 0.5s ease',
+                    pointerEvents: isWaitingForPlayers ? 'none' : 'auto',
+                    width: '100%',
+                    height: '100%'
                 }}>
-                    <div>Players: {gameState.players.length}/{gameState.max_players}</div>
-                    <div>Has Drawn: {gameState.has_drawn ? 'Yes' : 'No'}</div>
-                    <div>Pot: {gameState.pot.length} cards</div>
-                    <div>Pot: {gameState.pot.length} cards</div>
-                    <div>Host: {lobby?.host}</div>
-                    <div>You: {playerName}</div>
-                    <div>Is Host: {lobby?.host_uid === currentUser?.uid ? 'Yes' : 'No'}</div>
-                    
-                    {/* Cancellation button for started games before any move */}
-                    {lobby?.host_uid === currentUser?.uid && !gameState.any_player_has_drawn && !gameState.game_over && (
-                        <button
-                            onClick={handleCancelLobby}
-                            disabled={loadingStates.starting}
-                            style={{
-                                marginTop: '10px',
-                                background: '#f44336',
-                                fontSize: '0.8em',
-                                padding: '5px 10px'
-                            }}
-                        >
-                            {loadingStates.starting ? "Cancelling..." : "Cancel Game & Refund"}
-                        </button>
-                    )}
+                    <LazyGameTable
+                        state={gameState}
+                        playerName={playerName}
+                        onDiscard={handleDiscard}
+                        onDraw={handleDraw}
+                        loadingStates={loadingStates}
+                        playSound={playSound}
+                    />
                 </div>
             )}
 
-            {/* Game Waiting State */}
-            {(!gameState && lobby) && (
+            {/* Game Waiting Overlay */}
+            {isWaitingForPlayers && (
                 <div className="game-waiting-overlay" style={{
                     position: 'fixed',
                     top: '50%',
                     left: '50%',
                     transform: 'translate(-50%, -50%)',
-                    background: 'rgba(0, 0, 0, 0.8)',
+                    background: 'rgba(0, 0, 0, 0.85)',
+                    backdropFilter: 'blur(5px)',
                     color: 'white',
-                    padding: '20px',
-                    borderRadius: '10px',
+                    padding: '30px',
+                    borderRadius: '20px',
                     textAlign: 'center',
                     zIndex: 1001,
-                    minWidth: '300px'
+                    minWidth: '320px',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                    border: '1px solid rgba(255,255,255,0.1)'
                 }}>
-                    <h3>Waiting for players to join...</h3>
-                    <div style={{ margin: '15px 0', fontSize: '1.2em' }}>
-                        Entry Fee: <span style={{ color: '#ffd700', fontWeight: 'bold' }}>K{lobby.entry_fee || 0}</span>
+                    <h2 style={{ color: '#ffd700', marginBottom: '20px' }}>Waiting for Players</h2>
+                    
+                    <div style={{ marginBottom: '25px' }}>
+                        <div style={{ fontSize: '0.9em', opacity: 0.7, marginBottom: '5px' }}>Entry Fee</div>
+                        <div style={{ fontSize: '1.8em', color: '#ffd700', fontWeight: 'bold' }}>K{lobby.entry_fee || 0}</div>
                     </div>
-                    <div style={{ margin: '15px 0', fontSize: '1.2em' }}>
-                        Players: {lobby.players.length}/{lobby.max_players}
+
+                    <div style={{ marginBottom: '25px' }}>
+                        <div style={{ fontSize: '1.2em', marginBottom: '10px' }}>
+                            Players Joined: <span style={{ fontWeight: 'bold' }}>{lobby.players.length}/{lobby.max_players}</span>
+                        </div>
+                        <div style={{ 
+                            width: '100%', 
+                            height: '8px', 
+                            background: 'rgba(255,255,255,0.1)', 
+                            borderRadius: '4px',
+                            overflow: 'hidden'
+                        }}>
+                            <div style={{ 
+                                width: `${(lobby.players.length / lobby.max_players) * 100}%`,
+                                height: '100%',
+                                background: '#ffd700',
+                                transition: 'width 0.3s ease'
+                            }} />
+                        </div>
                     </div>
-                    {lobby.host_uid === currentUser?.uid && (
+
+                    <p style={{ fontSize: '0.9em', opacity: 0.6, marginBottom: '20px' }}>
+                        The game table will unlock once all players have joined and wallets are deducted.
+                    </p>
+
+                    {lobby.host_uid === currentUser?.uid ? (
+                        <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
+                            <button
+                                onClick={handleCancelLobby}
+                                disabled={loadingStates.starting}
+                                style={{
+                                    background: 'transparent',
+                                    color: '#f44336',
+                                    border: '1px solid #f44336',
+                                    padding: '10px 20px',
+                                    borderRadius: '30px',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold',
+                                    fontSize: '0.9em'
+                                }}
+                            >
+                                {loadingStates.starting ? "..." : "Cancel"}
+                            </button>
+                            <button
+                                onClick={handleStartLobby}
+                                disabled={loadingStates.starting || lobby.players.length < 2}
+                                style={{
+                                    background: 'linear-gradient(to bottom, #ffd700, #ff8c00)',
+                                    color: 'black',
+                                    border: 'none',
+                                    padding: '10px 25px',
+                                    borderRadius: '30px',
+                                    cursor: lobby.players.length < 2 ? 'not-allowed' : 'pointer',
+                                    fontWeight: 'bold',
+                                    boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+                                    opacity: lobby.players.length < 2 ? 0.6 : 1
+                                }}
+                            >
+                                {loadingStates.starting ? "Starting..." : "Start Game"}
+                            </button>
+                        </div>
+                    ) : (
                         <button
-                            onClick={handleCancelLobby}
-                            disabled={loadingStates.starting}
+                            onClick={handleQuitLobby}
+                            disabled={loadingStates.joining}
                             style={{
-                                background: '#f44336',
+                                background: 'rgba(255,255,255,0.1)',
                                 color: 'white',
-                                border: 'none',
-                                padding: '10px 20px',
-                                borderRadius: '5px',
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                padding: '10px 25px',
+                                borderRadius: '30px',
                                 cursor: 'pointer',
-                                marginTop: '10px'
+                                fontWeight: 'bold'
                             }}
                         >
-                            {loadingStates.starting ? "Cancelling..." : "Cancel Game"}
+                            {loadingStates.joining ? "Leaving..." : "Quit Room"}
                         </button>
                     )}
                 </div>
-            )}
-
-            {gameState && (
-                <LazyGameTable
-                    state={gameState}
-                    playerName={playerName}
-                    onDiscard={handleDiscard}
-                    onDraw={handleDraw}
-                    loadingStates={loadingStates}
-                    playSound={playSound}
-                />
             )}
 
             {gameState && (

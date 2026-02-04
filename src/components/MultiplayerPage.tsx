@@ -81,17 +81,22 @@ export const MultiplayerPage = ({
                 type="number"
                 value={entryFee || 0}
                 onChange={(e) => setEntryFee(Number(e.target.value))}
-                className="custom-amount-input"
+                className={`custom-amount-input ${entryFee < 1 ? 'error-input' : ''}`}
                 placeholder="0"
                 min="0"
               />
               <span className="amount-suffix">K</span>
             </div>
+            {entryFee < 1 && (
+              <p className="fee-error-message" style={{ color: '#f44336', fontSize: '12px', marginTop: '4px' }}>
+                minimum fee is K1
+              </p>
+            )}
           </div>
 
           <button
             onClick={onCreateLobby}
-            disabled={loadingStates.starting || !playerName.trim()}
+            disabled={loadingStates.starting || !playerName.trim() || entryFee < 1}
             className="create-lobby-btn premium-btn"
           >
             {loadingStates.starting ? "Creating..." : "Create New Game"}
@@ -139,10 +144,12 @@ export const MultiplayerPage = ({
                   </div>
                   <button
                     onClick={() => onJoinLobby(lobby.id)}
-                    disabled={(lobby.players?.length || 0) >= lobby.max_players || loadingStates.joining}
+                    disabled={(lobby.players?.length || 0) >= lobby.max_players || loadingStates.joining || lobby.started}
                     className="join-lobby-btn"
                   >
-                    {loadingStates.joining ? "Joining..." : "Join Game"}
+                    {loadingStates.joining ? "Joining..." : 
+                     lobby.started ? "Started" :
+                     (lobby.players?.length || 0) >= lobby.max_players ? "Full" : "Join Game"}
                   </button>
                 </div>
               ))
@@ -155,7 +162,7 @@ export const MultiplayerPage = ({
       <button 
         className="fab-button" 
         onClick={onCreateLobby}
-        disabled={loadingStates.starting || !playerName.trim()}
+        disabled={loadingStates.starting || !playerName.trim() || entryFee < 1}
         title="Create New Game"
       >
         <Plus size={32} />

@@ -43,8 +43,9 @@ export type LobbyGame = {
   created_at: string;
   started?: boolean;
   game_id?: string;
-  entry_fee?: number;
-  host_uid?: string;
+  entry_fee: number;
+  host_uid: string;
+  player_uids: string[];
 };
 
 export type LoadingStates = {
