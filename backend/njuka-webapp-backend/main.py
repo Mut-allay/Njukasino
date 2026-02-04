@@ -228,50 +228,11 @@ class JoinLobbyRequest(BaseModel):
 async def create_lobby(request: CreateLobbyRequest):
     if not (2 <= request.max_players <= 8):
         raise HTTPException(status_code=400, detail="Max players must be 2-8")
-    if request.entry_fee < 0:
-        raise HTTPException(status_code=400, detail="Entry fee cannot be negative")
+    if request.entry_fee < 1:
+        raise HTTPException(status_code=400, detail="minimum fee is K1")
 
-    # Deduct entry fee from host's wallet if entry_fee > 0
-    if request.entry_fee > 0:
-        try:
-            # Get user document using host_uid (more reliable than host name)
-            user_ref = db.collection('users').document(request.host_uid)
-            user_doc = user_ref.get()
-            if not user_doc.exists:
-                raise HTTPException(status_code=404, detail="User not found")
-            
-            user_data = user_doc.to_dict()
-            current_balance = user_data.get('wallet_balance', 0)
-            
-            if current_balance < request.entry_fee:
-                raise HTTPException(status_code=400, detail="Insufficient balance")
-            
-            # Deduct entry fee using transaction
-            @firestore.transactional
-            def deduct_fee(transaction):
-                user_snapshot = user_ref.get(transaction=transaction)
-                if not user_snapshot.exists:
-                    raise HTTPException(status_code=404, detail="User not found")
-                
-                user_data = user_snapshot.to_dict()
-                balance = user_data.get('wallet_balance', 0)
-                if balance < request.entry_fee:
-                    raise HTTPException(status_code=400, detail="Insufficient balance")
-                
-                transaction.update(user_ref, {
-                    'wallet_balance': balance - request.entry_fee
-                })
-                return balance - request.entry_fee
-            
-            new_balance = deduct_fee(db.transaction())
-            logger.info(f"Deducted {request.entry_fee} from {request.host_uid}, new balance: {new_balance}")
-            
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Failed to deduct entry fee from {request.host_uid}: {e}")
-            raise HTTPException(status_code=500, detail="Failed to process payment")
-
+    # WE NO LONGER DEDUCT FEE HERE. Deduction happens when the game starts (last player joins).
+    
     lobby_id = str(uuid.uuid4())
     lobby = LobbyGame(
         id=lobby_id,
@@ -285,8 +246,84 @@ async def create_lobby(request: CreateLobbyRequest):
         last_updated=datetime.now()
     )
     active_lobbies[lobby_id] = lobby
-    logger.info(f"Lobby created: {lobby_id} by {request.host} with entry fee {request.entry_fee}")
+    
+    # NEW: Create a GameState immediately so the host can see the board (blurred)
+    game_state = new_game_state("multiplayer", lobby.host, player_uid=lobby.host_uid, max_players=lobby.max_players, entry_fee=lobby.entry_fee)
+    active_games[game_state.id] = game_state
+    lobby.game_id = game_state.id
+    
+    logger.info(f"Lobby created: {lobby_id} by {request.host}. Game {game_state.id} initialized (Waiting).")
     return lobby.dict()
+
+@app.post("/lobby/{lobby_id}/start")
+async def start_lobby(lobby_id: str, host_uid: str = Query(...)):
+    if lobby_id not in active_lobbies:
+        raise HTTPException(status_code=404, detail="Lobby not found")
+    
+    lobby = active_lobbies[lobby_id]
+    if lobby.host_uid != host_uid:
+        raise HTTPException(status_code=403, detail="Only the host can start the game")
+    
+    if len(lobby.players) < 2:
+        raise HTTPException(status_code=400, detail="Need at least 2 players to start")
+    
+    if lobby.started:
+        raise HTTPException(status_code=400, detail="Game already started")
+
+    game_state = active_games.get(lobby.game_id)
+    if not game_state:
+        raise HTTPException(status_code=500, detail="Game state missing from lobby")
+
+    # Deduct fees and start game
+    await start_game_process(lobby, game_state)
+    lobby.started = True
+    lobby.last_updated = datetime.now()
+
+    # Notify everyone
+    await manager.broadcast_lobby_update(lobby_id, lobby)
+    await manager.broadcast_game_update(game_state.id, game_state)
+
+    return {"status": "success", "lobby": lobby.dict(), "game": game_state.dict()}
+
+@app.post("/lobby/{lobby_id}/quit")
+async def quit_lobby(lobby_id: str, player_uid: str = Query(...)):
+    if lobby_id not in active_lobbies:
+        raise HTTPException(status_code=404, detail="Lobby not found")
+    
+    lobby = active_lobbies[lobby_id]
+    
+    if player_uid not in lobby.player_uids:
+        raise HTTPException(status_code=404, detail="Player not in lobby")
+    
+    if lobby.started:
+        raise HTTPException(status_code=400, detail="Cannot quit once game has started. Use in-game quit if available.")
+
+    # Remove player from lobby
+    index = lobby.player_uids.index(player_uid)
+    player_name = lobby.players[index]
+    
+    lobby.players.pop(index)
+    lobby.player_uids.pop(index)
+    lobby.last_updated = datetime.now()
+
+    # Remove player from game state
+    game_state = active_games.get(lobby.game_id)
+    if game_state:
+        game_state.players = [p for p in game_state.players if p.uid != player_uid]
+        # Return cards to deck if player had cards (though game hasn't started, they were dealt 3)
+        # For simplicity, we can just leave them if game hasn't started.
+
+    # If host leaves, cancel lobby
+    if player_uid == lobby.host_uid:
+        await cancel_lobby(lobby_id, player_uid)
+        return {"status": "success", "message": "Host left, lobby cancelled"}
+
+    # Notify remaining participants
+    await manager.broadcast_lobby_update(lobby_id, lobby)
+    if game_state:
+        await manager.broadcast_game_update(game_state.id, game_state)
+
+    return {"status": "success", "message": "Player left lobby"}
 
 @app.post("/lobby/{lobby_id}/join")
 async def join_lobby(lobby_id: str, request: JoinLobbyRequest):
@@ -299,113 +336,105 @@ async def join_lobby(lobby_id: str, request: JoinLobbyRequest):
     if len(lobby.players) >= lobby.max_players:
         raise HTTPException(status_code=400, detail="Lobby is full")
 
-    if player_name in lobby.players:
+    if player_name in lobby.players or request.player_uid in lobby.player_uids:
         raise HTTPException(status_code=400, detail="Player already in lobby")
 
-    # Deduct entry fee from joining player's wallet if entry_fee > 0
-    if lobby.entry_fee > 0:
-        try:
-            # Get user document using player_uid
-            user_ref = db.collection('users').document(request.player_uid)
-            user_doc = user_ref.get()
-            if not user_doc.exists:
-                raise HTTPException(status_code=404, detail="User not found")
-            
-            user_data = user_doc.to_dict()
-            current_balance = user_data.get('wallet_balance', 0)
-            
-            if current_balance < lobby.entry_fee:
-                raise HTTPException(status_code=400, detail="Insufficient balance")
-            
-            # Deduct entry fee using transaction
-            @firestore.transactional
-            def deduct_fee(transaction):
-                user_snapshot = user_ref.get(transaction=transaction)
-                if not user_snapshot.exists:
-                    raise HTTPException(status_code=404, detail="User not found")
-                
-                user_data = user_snapshot.to_dict()
-                balance = user_data.get('wallet_balance', 0)
-                if balance < lobby.entry_fee:
-                    raise HTTPException(status_code=400, detail="Insufficient balance")
-                
-                transaction.update(user_ref, {
-                    'wallet_balance': balance - lobby.entry_fee
-                })
-                return balance - lobby.entry_fee
-            
-            new_balance = deduct_fee(db.transaction())
-            logger.info(f"Deducted {lobby.entry_fee} from {request.player_uid}, new balance: {new_balance}")
-            
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Failed to deduct entry fee from {request.player_uid}: {e}")
-            raise HTTPException(status_code=500, detail="Failed to process payment")
+    # Get the existing game state
+    game_state = active_games.get(lobby.game_id)
+    if not game_state:
+         raise HTTPException(status_code=500, detail="Game state missing from lobby")
 
-    # CRITICAL FIX: Create game when second player joins
-    if len(lobby.players) == 1:  # This is the second player → start the game!
-        game_state = new_game_state("multiplayer", lobby.host, player_uid=lobby.host_uid, max_players=lobby.max_players, entry_fee=lobby.entry_fee)
-        active_games[game_state.id] = game_state
+    # Add joining player to the game with 3 cards
+    new_player = Player(name=player_name, uid=request.player_uid, hand=[])
+    for _ in range(3):
+        if game_state.deck:
+            new_player.hand.append(game_state.deck.pop())
+    game_state.players.append(new_player)
 
-        # Add joining player to the game with 3 cards
-        game_state.players.append(Player(name=player_name, uid=request.player_uid, hand=[]))
-        for _ in range(3):
-            if game_state.deck:
-                game_state.players[-1].hand.append(game_state.deck.pop())
-
-        # Update pot_amount with entry fees from both players
-        game_state.pot_amount = lobby.entry_fee * 2
-    elif len(lobby.players) > 1 and lobby.game_id:
-        # Subsequent players joining an already started lobby (if max_players > 2)
-        game_state = active_games.get(lobby.game_id)
-        if game_state:
-            game_state.players.append(Player(name=player_name, uid=request.player_uid, hand=[]))
-            for _ in range(3):
-                if game_state.deck:
-                    game_state.players[-1].hand.append(game_state.deck.pop())
-            # Increment pot for subsequent players
-            game_state.pot_amount += lobby.entry_fee
-
-    # THIS WAS THE MISSING LINE THAT BROKE EVERYTHING
-    if len(lobby.players) == 1:
-        lobby.game_id = game_state.id
-        lobby.started = True
-    
-    logger.info(f"Player {player_name} joined game {lobby.game_id}, total players: {len(lobby.players) + 1}, pot: {game_state.pot_amount if lobby.game_id else 0}")
-
-    # Now add player to lobby list
+    # Add player to lobby list
     lobby.players.append(player_name)
-    if not hasattr(lobby, 'player_uids'):
-        lobby.player_uids = [lobby.host_uid]
     lobby.player_uids.append(request.player_uid)
     lobby.last_updated = datetime.now()
 
-    # Notify everyone (host will now see game_id and switch screen)
+    # AUTO-START IF ROOM IS FULL
+    if len(lobby.players) == lobby.max_players:
+        logger.info(f"Last player {player_name} joined. Auto-starting game {game_state.id}...")
+        try:
+            await start_game_process(lobby, game_state)
+            lobby.started = True
+        except Exception as e:
+            logger.error(f"Failed to auto-start game: {e}")
+    
+    # Notify everyone
     await manager.broadcast_lobby_update(lobby_id, lobby)
-
-    # Return updated lobby + full game state
-    game = active_games.get(lobby.game_id) if lobby.game_id else None
+    await manager.broadcast_game_update(game_state.id, game_state)
 
     return JSONResponse(content={
         "lobby": lobby.dict(),
-        "game": game.dict() if game else None
+        "game": game_state.dict()
     })
+
+async def start_game_process(lobby: LobbyGame, game: GameState):
+    """Handles wallet deductions and game state activation when lobby is full."""
+    if lobby.entry_fee <= 0:
+        game.pot_amount = 0
+        return
+
+    total_pool = 0
+    success_count = 0
+    
+    for uid in lobby.player_uids:
+        try:
+            user_ref = db.collection('users').document(uid)
+            
+            @firestore.transactional
+            def deduct_transaction(transaction):
+                snapshot = user_ref.get(transaction=transaction)
+                if snapshot.exists:
+                    data = snapshot.to_dict()
+                    balance = data.get('wallet_balance', 0)
+                    if balance < lobby.entry_fee:
+                        raise HTTPException(status_code=400, detail=f"Insufficient balance for player {uid}")
+                    transaction.update(user_ref, {'wallet_balance': balance - lobby.entry_fee})
+                    return True
+                return False
+
+            if deduct_transaction(db.transaction()):
+                total_pool += lobby.entry_fee
+                success_count += 1
+                logger.info(f"Deducted {lobby.entry_fee} from {uid}")
+        except Exception as e:
+            logger.error(f"Failed to deduct fee from {uid}: {e}")
+            # In a real casino, you might eject the player here, but for now we log and move on
+            # to avoid blocking the whole game if one player's Firebase connection flickers.
+
+    game.pot_amount = total_pool
+    logger.info(f"Game process complete. Pot: {game.pot_amount}, Success: {success_count}/{len(lobby.player_uids)}")
 
 @app.get("/lobby/list")
 async def list_lobbies():
     now = datetime.now()
     expired = []
+    visible_lobbies = []
     for lid, lobby in active_lobbies.items():
+        # Cleanup expired
         if lobby.started:
             if (now - lobby.last_updated) > timedelta(minutes=10):
                 expired.append(lid)
+                continue
         elif (now - lobby.last_updated) > timedelta(minutes=30):
             expired.append(lid)
+            continue
+        
+        # Filter: Hide full or started games
+        if not lobby.started and len(lobby.players) < lobby.max_players:
+            visible_lobbies.append(lobby)
+
     for lid in expired:
         if lid in active_lobbies:
             del active_lobbies[lid]
-    return list(active_lobbies.values())
+            
+    return visible_lobbies
 
 @app.post("/lobby/{lobby_id}/cancel")
 async def cancel_lobby(lobby_id: str, host_uid: str = Query(...)):
@@ -418,29 +447,25 @@ async def cancel_lobby(lobby_id: str, host_uid: str = Query(...)):
     if lobby.host_uid != host_uid:
         raise HTTPException(status_code=403, detail="Only the host can cancel the lobby")
 
-    if lobby.started:
-        # Check if the game has actually had any cards drawn
-        if lobby.game_id in active_games:
-            game = active_games[lobby.game_id]
-            if game.any_player_has_drawn:
-                raise HTTPException(status_code=400, detail="Cannot cancel a game that has already started and moves have been made")
-            # If no cards drawn, we can still cancel. Delete the game state.
-            del active_games[lobby.game_id]
-            logger.info(f"Deleted game state {lobby.game_id} during cancel")
-        else:
-            # Lobby says started but game state is missing - weird, but proceed with cancellation
-            pass
+    # Check if the game has actually had any cards drawn
+    game = active_games.get(lobby.game_id)
+    if game:
+        if game.any_player_has_drawn:
+            # If the first player (or anyone) has drawn, someone exited or host is trying to bail. 
+            # Per rules: no refund if first person draws. 
+            raise HTTPException(status_code=400, detail="Cannot cancel a game once a move has been made.")
+        
+        # If no cards drawn, we can still cancel. Delete the game state.
+        del active_games[lobby.game_id]
+        logger.info(f"Deleted game state {lobby.game_id} during cancel")
 
-    # Refund all participants
-    if lobby.entry_fee > 0:
+    # Refund all participants IF the lobby had started (meaning wallets were deducted)
+    # If lobby.started is False, it means wallets haven't been deducted yet (new logic).
+    if lobby.started and lobby.entry_fee > 0:
         participants = set(lobby.player_uids)
-        if lobby.host_uid:
-            participants.add(lobby.host_uid)
-            
         for p_uid in participants:
             try:
                 user_ref = db.collection('users').document(p_uid)
-                
                 @firestore.transactional
                 def refund_transaction(transaction):
                     snapshot = user_ref.get(transaction=transaction)
@@ -454,8 +479,6 @@ async def cancel_lobby(lobby_id: str, host_uid: str = Query(...)):
                 new_balance = refund_transaction(db.transaction())
                 if new_balance is not None:
                     logger.info(f"Refunded {lobby.entry_fee} to {p_uid}, new balance: {new_balance}")
-                    
-                    # Log refund transaction
                     db.collection('transactions').add({
                         'type': 'lobby_refund',
                         'lobby_id': lobby_id,
@@ -481,7 +504,7 @@ async def cancel_lobby(lobby_id: str, host_uid: str = Query(...)):
     # Delete lobby
     del active_lobbies[lobby_id]
     logger.info(f"Lobby cancelled: {lobby_id}")
-    return {"status": "success", "message": "Lobby cancelled and participants refunded"}
+    return {"status": "success", "message": "Lobby cancelled and participants refunded (if applicable)"}
 
 @app.post("/new_game")
 async def create_game(
@@ -597,10 +620,17 @@ async def get_house_balance(
 # WebSocket Endpoints
 @app.websocket("/ws/game/{game_id}")
 async def ws_game(websocket: WebSocket, game_id: str, player_name: str = Query(...)):
+    await websocket.accept()
     if game_id not in active_games:
+        logger.warning(f"WebSocket connection attempt for non-existent game: {game_id}")
         await websocket.close(code=1008)
         return
-    await manager.connect_to_game(websocket, game_id, player_name)
+    
+    if game_id not in manager.game_connections:
+        manager.game_connections[game_id] = {}
+    manager.game_connections[game_id][player_name] = websocket
+    
+    logger.info(f"Connected to game WebSocket: {game_id} for player {player_name}")
     try:
         while True:
             data = await websocket.receive_text()
@@ -614,10 +644,17 @@ async def ws_game(websocket: WebSocket, game_id: str, player_name: str = Query(.
 
 @app.websocket("/ws/lobby/{lobby_id}")
 async def ws_lobby(websocket: WebSocket, lobby_id: str):
+    await websocket.accept()
     if lobby_id not in active_lobbies:
+        logger.warning(f"WebSocket connection attempt for non-existent lobby: {lobby_id}")
         await websocket.close(code=1008)
         return
-    await manager.connect_to_lobby(websocket, lobby_id)
+    
+    if lobby_id not in manager.lobby_connections:
+        manager.lobby_connections[lobby_id] = set()
+    manager.lobby_connections[lobby_id].add(websocket)
+    
+    logger.info(f"Connected to lobby WebSocket: {lobby_id}")
     try:
         while True:
             data = await websocket.receive_text()

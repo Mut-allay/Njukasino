@@ -146,6 +146,22 @@ export class GameService {
     );
   }
 
+  async quitLobby(lobbyId: string, playerUid: string): Promise<void> {
+    await this.fetchWithErrorHandling(
+      `${API}/lobby/${lobbyId}/quit?player_uid=${encodeURIComponent(playerUid)}`,
+      { method: 'POST' },
+      'quitLobby'
+    );
+  }
+
+  async startLobby(lobbyId: string, hostUid: string): Promise<{ lobby: LobbyGame; game: GameState }> {
+    return this.fetchWithErrorHandling(
+      `${API}/lobby/${lobbyId}/start?host_uid=${encodeURIComponent(hostUid)}`,
+      { method: 'POST' },
+      'startLobby'
+    ) as Promise<{ lobby: LobbyGame; game: GameState }>;
+  }
+
   async getWallet(playerName: string): Promise<{ wallet: number }> {
     return this.fetchWithErrorHandling(
       `${API}/wallet/${encodeURIComponent(playerName)}`,
