@@ -1,6 +1,7 @@
 import type { GameState, LobbyGame } from '../types/game';
 
-const API = import.meta.env.VITE_API_URL || "https://njuka-webapp-backend.onrender.com";
+const rawAPI = import.meta.env.VITE_API_URL || "https://njuka-webapp-backend.onrender.com";
+const API = rawAPI.endsWith('/') ? rawAPI.slice(0, -1) : rawAPI;
 export const WS_API = API.replace('https://', 'wss://').replace('http://', 'ws://');  // WebSocket API
 
 // Log backend configuration on module load

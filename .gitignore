@@ -44,3 +44,6 @@ firebase.json
 *.env
 *.env.local
 .env
+
+.vercel
+.env*.local
