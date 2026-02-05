@@ -238,8 +238,11 @@ async def create_lobby(request: CreateLobbyRequest):
         raise HTTPException(status_code=404, detail="User not found")
     
     balance = user_snap.to_dict().get('wallet_balance', 0)
-    if balance < request.entry_fee:
-        raise HTTPException(status_code=400, detail=f"Insufficient balance. You have K{balance}, but the entry fee is K{request.entry_fee}. Please top up your wallet.")
+    if balance < request.entry_fee or balance <= 0: # Ensure K0 users can't create paid games
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Insufficient balance. You have K{balance}, but the entry fee is K{request.entry_fee}. Please top up your wallet to play."
+        )
 
     # WE NO LONGER DEDUCT FEE HERE. Deduction happens when the game starts (last player joins).
     
@@ -357,7 +360,10 @@ async def join_lobby(lobby_id: str, request: JoinLobbyRequest):
     
     balance = user_snap.to_dict().get('wallet_balance', 0)
     if balance < lobby.entry_fee:
-        raise HTTPException(status_code=400, detail=f"Insufficient balance. You have K{balance}, but the entry fee is K{lobby.entry_fee}. Please top up your wallet.")
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Insufficient balance. This room requires K{lobby.entry_fee}, but you only have K{balance}. Please top up to join."
+        )
 
     # Get the existing game state
     game_state = active_games.get(lobby.game_id)
@@ -385,8 +391,9 @@ async def join_lobby(lobby_id: str, request: JoinLobbyRequest):
         except Exception as e:
             logger.error(f"Failed to auto-start game: {e}")
     
-    # Notify everyone
+    # ⬇️ CRITICAL: Broadcast the lobby update FIRST so existing players see "started: True"
     await manager.broadcast_lobby_update(lobby_id, lobby)
+    # Then broadcast the game state so they have the card data
     await manager.broadcast_game_update(game_state.id, game_state)
 
     return JSONResponse(content={
