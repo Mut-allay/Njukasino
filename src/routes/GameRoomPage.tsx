@@ -67,13 +67,19 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
                     setGameState(fetchedGame);
                     setGameId(targetGameId);
                 }
+
+                // CRITICAL: If we are at /lobby/:id but game has started, navigate to /game/:id
+                if (lobbyId && lobby?.started && lobby?.game_id && !urlGameId) {
+                    console.log(`[GameRoom] Lobby started! Navigating to game: ${lobby.game_id}`);
+                    navigate(`/game/${lobby.game_id}`, { replace: true });
+                }
             } catch (err) {
                 console.error('[GameRoom] Sync error:', err);
             }
         };
 
         syncState();
-    }, [lobbyId, urlGameId, lobby, gameId, gameState, gameService, setLobby, setGameId, setGameState]);
+    }, [lobbyId, urlGameId, lobby, gameId, gameState, gameService, setLobby, setGameId, setGameState, navigate]);
 
     // Handle "Player Exited" WebSocket messages
     useEffect(() => {
@@ -176,7 +182,7 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
         );
     }
 
-    const isWaitingForPlayers = lobby && !lobby.started;
+    const isWaitingForPlayers = lobby && (!lobby.started || !gameState);
 
     return (
         <div className="game-container">
@@ -297,7 +303,9 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
                     </div>
 
                     <p style={{ fontSize: '0.9em', opacity: 0.6, marginBottom: '20px' }}>
-                        The game table will unlock once all players have joined and wallets are deducted.
+                        {lobby.started 
+                          ? "Game initialized! Unlocking table..." 
+                          : "The game table will unlock once all players have joined and wallets are deducted."}
                     </p>
 
                     {lobby.host_uid === currentUser?.uid ? (
