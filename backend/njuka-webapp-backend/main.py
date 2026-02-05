@@ -231,6 +231,16 @@ async def create_lobby(request: CreateLobbyRequest):
     if request.entry_fee < 1:
         raise HTTPException(status_code=400, detail="minimum fee is K1")
 
+    # Check host balance before creation
+    user_ref = db.collection('users').document(request.host_uid)
+    user_snap = user_ref.get()
+    if not user_snap.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    balance = user_snap.to_dict().get('wallet_balance', 0)
+    if balance < request.entry_fee:
+        raise HTTPException(status_code=400, detail=f"Insufficient balance. You have K{balance}, but the entry fee is K{request.entry_fee}. Please top up your wallet.")
+
     # WE NO LONGER DEDUCT FEE HERE. Deduction happens when the game starts (last player joins).
     
     lobby_id = str(uuid.uuid4())
@@ -338,6 +348,16 @@ async def join_lobby(lobby_id: str, request: JoinLobbyRequest):
 
     if player_name in lobby.players or request.player_uid in lobby.player_uids:
         raise HTTPException(status_code=400, detail="Player already in lobby")
+
+    # Check joining player balance before joining
+    user_ref = db.collection('users').document(request.player_uid)
+    user_snap = user_ref.get()
+    if not user_snap.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    balance = user_snap.to_dict().get('wallet_balance', 0)
+    if balance < lobby.entry_fee:
+        raise HTTPException(status_code=400, detail=f"Insufficient balance. You have K{balance}, but the entry fee is K{lobby.entry_fee}. Please top up your wallet.")
 
     # Get the existing game state
     game_state = active_games.get(lobby.game_id)
