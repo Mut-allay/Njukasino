@@ -131,22 +131,25 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
                 console.log('Connected to lobby WebSocket');
                 setLobbyWS(ws);
             };
-            ws.onmessage = (event) => {
+            ws.onmessage = async (event) => {
                 const message = JSON.parse(event.data);
                 if (message.type === 'lobby_update') {
-                    setLobby(message.data);
-                    if (message.data.started && message.data.game_id) {
-                        console.log(`[GameContext] Lobby WebSocket: Game started with ID ${message.data.game_id}`);
-                        setGameId(message.data.game_id);
-                        gameService.getGame(message.data.game_id)
-                            .then((game) => {
-                                console.log(`[GameContext] Fetched game state. Players: ${game.players.map(p => p.name).join(', ')}`);
-                                setGameState(game);
-                            })
-                            .catch(error => {
-                                console.error('[GameContext] Failed to fetch game state:', error);
-                                setError(error.message);
-                            });
+                    const updatedLobby = message.data;
+                    setLobby(updatedLobby);
+
+                    // ⬇️ IMPROVED ROUTING TRIGGER
+                    if (updatedLobby.started && updatedLobby.game_id) {
+                        console.log(`[LobbyWS] Quorum reached! Routing to Game: ${updatedLobby.game_id}`);
+                        setGameId(updatedLobby.game_id);
+                        
+                        try {
+                            // Immediately fetch the fresh game state to force the UI to switch
+                            const freshGame = await gameService.getGame(updatedLobby.game_id);
+                            console.log(`[LobbyWS] Fetched fresh game state. Players: ${freshGame.players.map(p => p.name).join(', ')}`);
+                            setGameState(freshGame);
+                        } catch (err) {
+                            console.error('[LobbyWS] Failed to fetch starting game state:', err);
+                        }
                     }
                 } else if (message.type === 'lobby_cancelled') {
                     console.log('[GameContext] Lobby cancelled by host');
@@ -278,7 +281,13 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
             setGameState(null);
             return newLobby;
         } catch (error: unknown) {
-            setError(error instanceof Error ? error.message : "Failed to create game");
+            // ⬇️ HANDLE WALLET ERROR
+            const msg = error instanceof Error ? error.message : "Failed to create";
+            if (msg.includes("Insufficient balance") || msg.includes("balance")) {
+                setError(msg); // This will trigger your pop-up logic
+            } else {
+                setError(msg);
+            }
             throw error;
         } finally {
             setLoadingStates(prev => ({ ...prev, starting: false }));
@@ -325,7 +334,13 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
 
             // Otherwise, we just wait in the lobby for the WebSocket update
         } catch (error: unknown) {
-            setError(error instanceof Error ? error.message : "Failed to join game");
+            // ⬇️ HANDLE WALLET ERROR
+            const msg = error instanceof Error ? error.message : "Failed to join";
+            if (msg.includes("Insufficient balance") || msg.includes("balance")) {
+                setError(msg); // This will trigger your pop-up logic
+            } else {
+                setError(msg);
+            }
             throw error;
         } finally {
             setLoadingStates(prev => ({ ...prev, joining: false }));
