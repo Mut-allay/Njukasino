@@ -86,6 +86,14 @@ export class GameService {
     ) as Promise<LobbyGame[]>;
   }
 
+  async getLobby(lobbyId: string): Promise<LobbyGame> {
+    return this.fetchWithErrorHandling(
+      `${API}/lobby/${lobbyId}`,
+      { method: 'GET' },
+      'getLobby'
+    ) as Promise<LobbyGame>;
+  }
+
   async getGame(gameId: string): Promise<GameState> {
     return this.fetchWithErrorHandling(
       `${API}/game/${gameId}`,

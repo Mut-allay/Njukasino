@@ -510,6 +510,15 @@ async def list_lobbies():
             
     return visible_lobbies
 
+
+@app.get("/lobby/{lobby_id}")
+async def get_lobby(lobby_id: str):
+    """Return a single lobby by id (including started lobbies). Used by clients in the room to poll for started/game_id when WebSocket fails."""
+    if lobby_id not in active_lobbies:
+        raise HTTPException(status_code=404, detail="Lobby not found")
+    return active_lobbies[lobby_id].dict()
+
+
 @app.post("/lobby/{lobby_id}/cancel")
 async def cancel_lobby(lobby_id: str, host_uid: str = Query(...)):
     if lobby_id not in active_lobbies:
