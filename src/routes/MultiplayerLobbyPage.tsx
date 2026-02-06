@@ -55,8 +55,13 @@ export const MultiplayerLobbyPage = () => {
             if (newLobby) {
                 navigate(`/lobby/${newLobby.id}`);
             }
-        } catch (error) {
+        } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : String(error);
             console.error('Failed to create lobby:', error);
+            if (msg.includes('Insufficient balance') || msg.includes('K0')) {
+                setRequiredFee(entryFee);
+                setIsBalanceModalOpen(true);
+            }
         }
     };
 
@@ -79,8 +84,13 @@ export const MultiplayerLobbyPage = () => {
             } else {
                 navigate(`/lobby/${lobbyId}`);
             }
-        } catch (error) {
+        } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : String(error);
             console.error('Failed to join lobby:', error);
+            if (msg.includes('Insufficient balance') || msg.includes('K0')) {
+                setRequiredFee(fee);
+                setIsBalanceModalOpen(true);
+            }
         }
     };
 

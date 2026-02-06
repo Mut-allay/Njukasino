@@ -4,6 +4,7 @@ import { useGame } from '../contexts/GameContext';
 import LazyGameTable from '../components/LazyGameTable';
 import LazyGameOverModal from '../components/LazyGameOverModal';
 import ErrorModal from '../components/ErrorModal';
+import InsufficientFundsModal from '../components/InsufficientFundsModal';
 import LoadingOverlay from '../components/LoadingOverlay';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -34,12 +35,22 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
         startLobby,
         gameService,
     } = useGame();
-    const { currentUser } = useAuth();
+    const { currentUser, userData } = useAuth();
 
     // Track if we are in the process of quitting to prevent re-sync
     const isQuittingRef = useRef(false);
 
     const [exitedPlayer, setExitedPlayer] = useState<string | null>(null);
+
+    // Navigate to game URL as soon as we have started lobby + gameId (so all clients leave waiting overlay)
+    useEffect(() => {
+        if (isQuittingRef.current) return;
+        const targetGameId = gameId || lobby?.game_id;
+        if (lobbyId && !urlGameId && lobby?.started && targetGameId) {
+            console.log(`[GameRoom] Lobby started — navigating to game: ${targetGameId}`);
+            navigate(`/game/${targetGameId}`, { replace: true });
+        }
+    }, [lobbyId, urlGameId, lobby?.started, lobby?.game_id, gameId, navigate]);
 
     // Initial state sync from URL params
     useEffect(() => {
@@ -68,7 +79,7 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
                     setGameId(targetGameId);
                 }
 
-                // CRITICAL: If we are at /lobby/:id but game has started, navigate to /game/:id
+                // If we are at /lobby/:id but game has started, ensure we navigate
                 if (lobbyId && lobby?.started && lobby?.game_id && !urlGameId) {
                     console.log(`[GameRoom] Lobby started! Navigating to game: ${lobby.game_id}`);
                     navigate(`/game/${lobby.game_id}`, { replace: true });
@@ -187,12 +198,18 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
     return (
         <div className="game-container">
             <ErrorModal
-                isOpen={!!error}
+                isOpen={!!error && !(error?.includes('Insufficient balance') || error?.includes('K0'))}
                 onClose={() => setError(null)}
                 message={error || ''}
                 showRetryButton={error?.includes('Connection') || error?.includes('Network') || false}
                 onRetry={() => window.location.reload()}
                 retryButtonText="Retry Connection"
+            />
+            <InsufficientFundsModal
+                isOpen={!!error && (error?.includes('Insufficient balance') || error?.includes('K0'))}
+                onClose={() => setError(null)}
+                currentBalance={userData?.wallet_balance ?? 0}
+                requiredAmount={lobby?.entry_fee ?? 0}
             />
 
             <LoadingOverlay

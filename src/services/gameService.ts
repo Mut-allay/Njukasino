@@ -12,10 +12,15 @@ export class GameService {
   private async handleResponse(response: Response, operation: string): Promise<unknown> {
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
-      const errorMessage = `${operation} failed: ${response.status} ${response.statusText} - ${errorText}`;
-      console.error(`[GameService] ${errorMessage}`);
-      console.error(`[GameService] URL: ${response.url}`);
-      throw new Error(errorMessage);
+      let userMessage = errorText;
+      try {
+        const body = JSON.parse(errorText) as { detail?: string };
+        if (typeof body.detail === 'string') userMessage = body.detail;
+      } catch {
+        userMessage = `${operation} failed: ${response.status} - ${errorText}`;
+      }
+      console.error(`[GameService] ${operation} failed:`, userMessage);
+      throw new Error(userMessage);
     }
     return await response.json();
   }

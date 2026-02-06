@@ -135,18 +135,26 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
                 const message = JSON.parse(event.data);
                 if (message.type === 'lobby_update') {
                     const updatedLobby = message.data;
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/b45a7468-79f5-4c75-8b9c-932b18089e84', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'GameContext.tsx:lobbyWS.onmessage', message: 'lobby_update received', data: { started: updatedLobby?.started, game_id: updatedLobby?.game_id, hasData: !!updatedLobby }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H2' }) }).catch(() => {});
+                    // #endregion
                     setLobby(updatedLobby);
 
                     // ⬇️ IMPROVED ROUTING TRIGGER
                     if (updatedLobby.started && updatedLobby.game_id) {
                         console.log(`[LobbyWS] Quorum reached! Routing to Game: ${updatedLobby.game_id}`);
                         setGameId(updatedLobby.game_id);
-                        
+                        // #region agent log
+                        fetch('http://127.0.0.1:7242/ingest/b45a7468-79f5-4c75-8b9c-932b18089e84', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'GameContext.tsx:lobbyWS.started', message: 'setting gameId and fetching game', data: { game_id: updatedLobby.game_id }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H4' }) }).catch(() => {});
+                        // #endregion
                         try {
                             // Immediately fetch the fresh game state to force the UI to switch
                             const freshGame = await gameService.getGame(updatedLobby.game_id);
                             console.log(`[LobbyWS] Fetched fresh game state. Players: ${freshGame.players.map(p => p.name).join(', ')}`);
                             setGameState(freshGame);
+                            // #region agent log
+                            fetch('http://127.0.0.1:7242/ingest/b45a7468-79f5-4c75-8b9c-932b18089e84', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'GameContext.tsx:lobbyWS.setGameState', message: 'game state set after fetch', data: { playerCount: freshGame.players?.length }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H4' }) }).catch(() => {});
+                            // #endregion
                         } catch (err) {
                             console.error('[LobbyWS] Failed to fetch starting game state:', err);
                         }

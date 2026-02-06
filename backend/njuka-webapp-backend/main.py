@@ -29,6 +29,24 @@ from firebase_admin import credentials, firestore, initialize_app
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+DEBUG_LOG_PATH = os.path.join(os.path.dirname(__file__), "..", "..", ".cursor", "debug.log")
+
+def _debug_log(location: str, message: str, data: dict):
+    try:
+        import time
+        line = json.dumps({
+            "location": location,
+            "message": message,
+            "data": data,
+            "timestamp": int(time.time() * 1000),
+            "sessionId": "debug-session",
+            "hypothesisId": data.get("hypothesisId", ""),
+        }) + "\n"
+        with open(DEBUG_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(line)
+    except Exception:
+        pass
+
 # ====================== FIREBASE INITIALIZATION ======================
 try:
     firebase_service_account_json = getenv("FIREBASE_SERVICE_ACCOUNT")
@@ -163,12 +181,17 @@ class ConnectionManager:
     async def broadcast_lobby_update(self, lobby_id: str, lobby: LobbyGame):
         if lobby_id not in self.lobby_connections:
             return
-        message = json.dumps({"type": "lobby_update", "data": lobby.dict()})
+        payload = lobby.dict()
+        payload["started"] = getattr(lobby, "started", False)
+        payload["game_id"] = getattr(lobby, "game_id", None)
+        message = json.dumps({"type": "lobby_update", "data": payload})
+        num_connections = len(self.lobby_connections[lobby_id])
+        _debug_log("main.py:broadcast_lobby_update", "broadcast", {"lobby_id": lobby_id, "started": payload["started"], "game_id": payload.get("game_id"), "num_connections": num_connections, "hypothesisId": "A"})
         disconnected = []
         for ws in self.lobby_connections[lobby_id]:
             try:
                 await ws.send_text(message)
-            except:
+            except Exception:
                 disconnected.append(ws)
         for ws in disconnected:
             self.disconnect_from_lobby(ws, lobby_id)
@@ -224,6 +247,18 @@ class JoinLobbyRequest(BaseModel):
 
 # ====================== ROUTES ======================
 
+def _normalize_balance(raw):
+    """Ensure balance is numeric for comparison. Firestore may return int, float, or str."""
+    if raw is None:
+        return 0
+    if isinstance(raw, (int, float)):
+        return int(raw) if isinstance(raw, float) and raw == int(raw) else float(raw)
+    try:
+        return int(float(str(raw).strip()))
+    except (ValueError, TypeError):
+        return 0
+
+
 @app.post("/lobby/create")
 async def create_lobby(request: CreateLobbyRequest):
     if not (2 <= request.max_players <= 8):
@@ -236,11 +271,18 @@ async def create_lobby(request: CreateLobbyRequest):
     user_snap = user_ref.get()
     if not user_snap.exists:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    balance = user_snap.to_dict().get('wallet_balance', 0)
-    if balance < request.entry_fee or balance <= 0: # Ensure K0 users can't create paid games
+
+    balance = _normalize_balance(user_snap.to_dict().get('wallet_balance'))
+    _debug_log("main.py:create_lobby", "wallet_check", {"host_uid": request.host_uid, "balance": balance, "entry_fee": request.entry_fee, "hypothesisId": "H6"})
+    # Strict: K0 cannot create any game; balance must be >= entry_fee
+    if balance <= 0:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
+            detail="Insufficient balance. You have K0. Please top up your wallet to create or join a game."
+        )
+    if balance < request.entry_fee:
+        raise HTTPException(
+            status_code=400,
             detail=f"Insufficient balance. You have K{balance}, but the entry fee is K{request.entry_fee}. Please top up your wallet to play."
         )
 
@@ -357,11 +399,17 @@ async def join_lobby(lobby_id: str, request: JoinLobbyRequest):
     user_snap = user_ref.get()
     if not user_snap.exists:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    balance = user_snap.to_dict().get('wallet_balance', 0)
+
+    balance = _normalize_balance(user_snap.to_dict().get('wallet_balance'))
+    _debug_log("main.py:join_lobby", "wallet_check", {"player_uid": request.player_uid, "balance": balance, "entry_fee": lobby.entry_fee, "hypothesisId": "H6"})
+    if balance <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Insufficient balance. You have K0. Please top up your wallet to create or join a game."
+        )
     if balance < lobby.entry_fee:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail=f"Insufficient balance. This room requires K{lobby.entry_fee}, but you only have K{balance}. Please top up to join."
         )
 
@@ -382,18 +430,17 @@ async def join_lobby(lobby_id: str, request: JoinLobbyRequest):
     lobby.player_uids.append(request.player_uid)
     lobby.last_updated = datetime.now()
 
-    # AUTO-START IF ROOM IS FULL
+    # AUTO-START IF ROOM IS FULL: complete start_game_process before setting started or broadcasting
     if len(lobby.players) == lobby.max_players:
+        _debug_log("main.py:join_lobby", "quorum_reached", {"lobby_id": lobby_id, "game_id": game_state.id, "players": len(lobby.players), "hypothesisId": "H1"})
         logger.info(f"Last player {player_name} joined. Auto-starting game {game_state.id}...")
-        try:
-            await start_game_process(lobby, game_state)
-            lobby.started = True
-        except Exception as e:
-            logger.error(f"Failed to auto-start game: {e}")
-    
-    # ⬇️ CRITICAL: Broadcast the lobby update FIRST so existing players see "started: True"
+        await start_game_process(lobby, game_state)
+        lobby.started = True
+        lobby.last_updated = datetime.now()
+        _debug_log("main.py:join_lobby", "after_start_process", {"lobby_id": lobby_id, "started": lobby.started, "game_id": lobby.game_id, "hypothesisId": "H1"})
+
+    # Broadcast lobby update so ALL clients (including existing players) see started=True and game_id
     await manager.broadcast_lobby_update(lobby_id, lobby)
-    # Then broadcast the game state so they have the card data
     await manager.broadcast_game_update(game_state.id, game_state)
 
     return JSONResponse(content={
