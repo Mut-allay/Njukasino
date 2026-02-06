@@ -66,6 +66,17 @@ async def _request(
     return {"_error": True, "message": "Max retries exceeded"}
 
 
+def _payment_type_from_phone(phone: str) -> str:
+    """Zambia: 97x = Airtel, 96x = MTN. Lipila expects 'AirtelMoney' or 'MtnMoney'."""
+    digits = phone.replace("+", "").replace(" ", "")
+    if digits.startswith("260") and len(digits) >= 12:
+        # 260974... -> Airtel, 260961... -> MTN
+        prefix = digits[3:5] if len(digits) >= 5 else ""
+        if prefix == "96":
+            return "MtnMoney"
+    return "AirtelMoney"
+
+
 async def initiate_momo_deposit(
     amount: float,
     phone: str,
@@ -75,15 +86,18 @@ async def initiate_momo_deposit(
     """
     Initiate a mobile money collection (deposit) via Lipila.
     POST /collections/mobile-money
+    paymentType is set from phone: 096 -> MtnMoney, 097 -> AirtelMoney.
     """
+    account = phone.replace("+", "").strip()
+    payment_type = _payment_type_from_phone(phone)
     payload = {
         "amount": amount,
-        "accountNumber": phone.replace("+", ""),  # Lipila wants NO + prefix, just 26097...
+        "accountNumber": account,
         "currency": "ZMW",
         "referenceId": reference,
         "callbackUrl": callback_url,
-        "narration": "Deposit to Njuka King Wallet",  # Add this required field
-        "paymentType": "AirtelMoney",  # Match your successful txns (Airtel)
+        "narration": "Deposit to Njuka King Wallet",
+        "paymentType": payment_type,
     }
 
     url = f"{LIPILA_BASE_URL}/collections/mobile-money"
