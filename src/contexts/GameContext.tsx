@@ -221,11 +221,10 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
 
         const interval = setInterval(async () => {
             try {
-                // Poll lobby if in waiting room (even if we have a blurred gameState)
+                // Poll lobby if in waiting room — use GET /lobby/:id so we see started lobbies (list_lobbies hides them)
                 if (lobby && !lobby.started) {
-                    const allLobbies = await gameService.getLobbies();
-                    const currentLobby = allLobbies.find(l => l.id === lobby.id);
-                    if (currentLobby) {
+                    try {
+                        const currentLobby = await gameService.getLobby(lobby.id);
                         setLobby(currentLobby);
                         if (currentLobby.started && currentLobby.game_id) {
                             console.log(`[GameContext] Polling detected lobby start! Game: ${currentLobby.game_id}`);
@@ -233,6 +232,8 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
                             const game = await gameService.getGame(currentLobby.game_id);
                             setGameState(game);
                         }
+                    } catch {
+                        // Lobby may have been cancelled or not found
                     }
                 }
 
