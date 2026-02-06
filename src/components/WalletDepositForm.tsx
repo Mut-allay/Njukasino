@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -48,7 +49,7 @@ interface WalletDepositFormProps {
   onDepositCard: (body: CardDepositRequest) => Promise<InitiateResponse>;
   loading: boolean;
   setLoading: (v: boolean) => void;
-  onSuccess: (msg: string) => void;
+  onSuccess: (msg: string, context?: { phone?: string; method: 'momo' | 'card' }) => void;
   onError: (msg: string) => void;
 }
 
@@ -93,6 +94,7 @@ export function WalletDepositForm({
 
   const isCard = cardNumber.replace(/\s/g, '').length >= 12;
   const amountNum = Number(amount) || 0;
+  const [lastMomoPrompt, setLastMomoPrompt] = useState<{ phone: string; amount: number } | null>(null);
 
   const onSubmit = async (data: DepositFormValues) => {
     const method: DepositMethod = isCard ? 'card' : 'momo';
@@ -103,11 +105,13 @@ export function WalletDepositForm({
     setLoading(true);
     try {
       if (method === 'momo') {
+        const phone = normalizePhone(data.phone ?? '');
         const res = await onDepositMomo({
           amount: amountNum,
-          phone: normalizePhone(data.phone ?? ''),
+          phone,
         });
-        onSuccess(res.message || 'Deposit initiated. Confirm on your phone.');
+        setLastMomoPrompt({ phone, amount: amountNum });
+        onSuccess(res.message || 'Deposit initiated.', { phone, method: 'momo' });
       } else {
         const res = await onDepositCard({
           amount: amountNum,
@@ -118,7 +122,8 @@ export function WalletDepositForm({
             cvv: data.cvv ?? '',
           },
         });
-        onSuccess(res.message || 'Card payment initiated.');
+        setLastMomoPrompt(null);
+        onSuccess(res.message || 'Card payment initiated.', { method: 'card' });
       }
     } catch (err: unknown) {
       const msg =
@@ -266,6 +271,31 @@ export function WalletDepositForm({
       >
         {loading ? 'Processing…' : `Deposit K${amountNum || '0'}`}
       </button>
+
+      {lastMomoPrompt && (
+        <div
+          className="wallet-momo-prompt-box"
+          style={{
+            marginTop: '1rem',
+            padding: '1rem',
+            background: 'rgba(255, 215, 0, 0.08)',
+            border: '1px solid rgba(255, 215, 0, 0.3)',
+            borderRadius: '12px',
+            fontSize: '0.9rem',
+            color: 'rgba(255, 255, 255, 0.95)',
+          }}
+        >
+          <strong style={{ color: '#ffd700' }}>Check your phone</strong>
+          <p style={{ margin: '0.5rem 0 0', opacity: 0.9 }}>
+            A payment request of <strong>K{lastMomoPrompt.amount}</strong> has been sent to{' '}
+            <strong>{lastMomoPrompt.phone}</strong>. Open your <strong>Airtel Money</strong> or{' '}
+            <strong>MTN Mobile Money</strong> app, or wait for the USSD prompt, and approve the payment.
+          </p>
+          <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', opacity: 0.75 }}>
+            If you don&apos;t receive it in 1–2 minutes, ensure this number is linked to your mobile money account and try again.
+          </p>
+        </div>
+      )}
     </form>
   );
 }
