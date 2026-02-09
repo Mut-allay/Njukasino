@@ -17,12 +17,9 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
     const { lobbyId, gameId: urlGameId } = useParams();
     const {
         gameState,
-        setGameState,
         playerName,
         lobby,
-        setLobby,
         gameId,
-        setGameId,
         loadingStates,
         error,
         setError,
@@ -33,7 +30,6 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
         cancelLobby,
         quitLobby,
         startLobby,
-        gameService,
     } = useGame();
     const { currentUser, userData } = useAuth();
 
@@ -52,45 +48,6 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
         }
     }, [lobbyId, urlGameId, lobby?.started, lobby?.game_id, gameId, navigate]);
 
-    // Initial state sync from URL params
-    useEffect(() => {
-        const syncState = async () => {
-            if (isQuittingRef.current) return;
-            try {
-                // If we have a lobbyId in URL but no lobby in context
-                if (lobbyId && (!lobby || lobby.id !== lobbyId)) {
-                    console.log(`[GameRoom] Syncing lobby: ${lobbyId}`);
-                    const allLobbies = await gameService.getLobbies();
-                    const foundLobby = allLobbies.find(l => l.id === lobbyId);
-                    if (foundLobby) {
-                        setLobby(foundLobby);
-                        if (foundLobby.game_id) {
-                            setGameId(foundLobby.game_id);
-                        }
-                    }
-                }
-
-                // If we have a gameId in URL (or derived from lobby) but no state
-                const targetGameId = urlGameId || gameId || lobby?.game_id;
-                if (targetGameId && (!gameState || gameState.id !== targetGameId)) {
-                    console.log(`[GameRoom] Syncing game: ${targetGameId}`);
-                    const fetchedGame = await gameService.getGame(targetGameId);
-                    setGameState(fetchedGame);
-                    setGameId(targetGameId);
-                }
-
-                // If we are at /lobby/:id but game has started, ensure we navigate
-                if (lobbyId && lobby?.started && lobby?.game_id && !urlGameId) {
-                    console.log(`[GameRoom] Lobby started! Navigating to game: ${lobby.game_id}`);
-                    navigate(`/game/${lobby.game_id}`, { replace: true });
-                }
-            } catch (err) {
-                console.error('[GameRoom] Sync error:', err);
-            }
-        };
-
-        syncState();
-    }, [lobbyId, urlGameId, lobby, gameId, gameState, gameService, setLobby, setGameId, setGameState, navigate]);
 
     // Handle "Player Exited" WebSocket messages
     useEffect(() => {
