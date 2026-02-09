@@ -36,6 +36,7 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
       role="status"
       aria-live="polite"
       aria-label={message}
+      data-testid="loading-overlay"
     >
       <div className="loading-content">
         {showSpinner && (

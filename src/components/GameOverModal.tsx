@@ -106,6 +106,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
       contentClassName="game-over-content"
       announceOnOpen={true}
       announcementMessage={`Game over! ${winner} wins!${formattedWinAmount ? ` Prize: ${formattedWinAmount}` : ''}`}
+      data-testid="game-over-modal"
     >
       <div className="game-over-message">
         {/* Winner Avatar/Icon */}

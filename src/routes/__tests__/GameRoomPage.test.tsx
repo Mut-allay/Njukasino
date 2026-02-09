@@ -110,7 +110,40 @@ describe('GameRoomPage Quorum Transition', () => {
     // Overlay should be gone (or not visible)
     expect(screen.queryByText('Waiting for Players')).not.toBeInTheDocument();
     // Game table should be present and not blurred (filter: none)
-    const gameTableContainer = screen.getByTestId('game-table').parentElement;
+    const gameTableContainer = screen.getByTestId('game-table-container');
     expect(gameTableContainer).toHaveStyle('filter: none');
+  });
+
+  it('syncs state from URL params on mount (persistence check)', async () => {
+    const mockGetLobbies = vi.fn().mockResolvedValue([{ id: 'test-lobby', started: false, players: [] }]);
+    const mockGetGame = vi.fn().mockResolvedValue({ id: 'game-123', players: [] });
+    const setLobby = vi.fn();
+    const setGameState = vi.fn();
+    const setGameId = vi.fn();
+    
+    vi.mocked(useGame).mockReturnValue({
+      lobby: null,
+      gameState: null,
+      setLobby,
+      setGameState,
+      setGameId,
+      loadingStates: {},
+      gameService: { 
+        getLobbies: mockGetLobbies, 
+        getGame: mockGetGame 
+      },
+    } as unknown as ReturnType<typeof useGame>);
+
+    render(
+      <MemoryRouter>
+        <GameRoomPage playSound={mockPlaySound} />
+      </MemoryRouter>
+    );
+
+    // Should trigger syncState due to useParams mock returning { lobbyId: 'test-lobby' }
+    await vi.waitFor(() => {
+      expect(mockGetLobbies).toHaveBeenCalled();
+      expect(setLobby).toHaveBeenCalledWith(expect.objectContaining({ id: 'test-lobby' }));
+    });
   });
 });

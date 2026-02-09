@@ -605,6 +605,34 @@ async def create_game(
     logger.info(f"Game created: {game.id} in {mode} mode by {player_name}")
     return game.dict()
 
+@app.post("/simulation/seed-bots")
+async def seed_bots():
+    """
+    Simulated endpoint for E2E testing.
+    Ensures that Bot_1, Bot_2, and Bot_3 exist in Firestore with sufficient balance.
+    """
+    bots = [
+        {"uid": "bot_1_uid", "username": "Bot_1", "first_name": "Test", "last_name": "Bot 1"},
+        {"uid": "bot_2_uid", "username": "Bot_2", "first_name": "Test", "last_name": "Bot 2"},
+        {"uid": "bot_3_uid", "username": "Bot_3", "first_name": "Test", "last_name": "Bot 3"},
+    ]
+    
+    for bot in bots:
+        user_ref = db.collection('users').document(bot["uid"])
+        user_ref.set({
+            "username": bot["username"].lower(),
+            "first_name": bot["first_name"],
+            "last_name": bot["last_name"],
+            "wallet_balance": 1000,
+            "onboarded": True,
+            "isOver18": True,
+            "acceptedTerms": True,
+            "onboardedAt": datetime.now().isoformat()
+        }, merge=True)
+        
+    logger.info("Simulation: Seeded 3 bots with K1000 each.")
+    return {"status": "success", "message": "3 bots seeded/updated with K1000 each."}
+
 @app.get("/game/{game_id}")
 async def get_game(game_id: str):
     if game_id not in active_games:

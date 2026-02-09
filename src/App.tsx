@@ -213,15 +213,15 @@ function App() {
   }, [enableAudio]);
 
   return (
-    <GameProvider playerName={playerName} setPlayerName={setPlayerName}>
-      <BrowserRouter>
+    <BrowserRouter>
+      <GameProvider playerName={playerName} setPlayerName={setPlayerName}>
         <AppContent 
           soundsEnabled={soundsEnabled}
           toggleSounds={toggleSounds}
           playSound={playSound}
         />
-      </BrowserRouter>
-    </GameProvider>
+      </GameProvider>
+    </BrowserRouter>
   );
 }
 

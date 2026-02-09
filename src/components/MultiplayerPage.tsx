@@ -98,6 +98,7 @@ export const MultiplayerPage = ({
             onClick={onCreateLobby}
             disabled={loadingStates.starting || !playerName.trim() || entryFee < 1}
             className="create-lobby-btn premium-btn"
+            data-testid="create-lobby-btn"
           >
             {loadingStates.starting ? "Creating..." : "Create New Game"}
           </button>
