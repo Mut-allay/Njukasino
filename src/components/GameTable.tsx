@@ -426,7 +426,7 @@ export const GameTable: React.FC<GameTableProps> = ({
   const canDraw = !loadingStates.drawing && currentPlayer.name === playerName && !isGameOver && !state.has_drawn
 
   return (
-    <div className="poker-table" ref={tableRef}>
+    <div className="poker-table" ref={tableRef} data-testid="game-table">
       {/* Screen reader announcements */}
       <div 
         id="game-announcements" 
@@ -626,6 +626,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                   transition: 'none'
                 }}
                 data-card-index={i}
+                data-testid="player-card"
               />
             )
           })}

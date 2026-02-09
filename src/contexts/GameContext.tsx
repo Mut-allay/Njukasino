@@ -1,8 +1,10 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import type { GameState, LobbyGame, LoadingStates } from '../types/game';
 import { GameService, WS_API } from '../services/gameService';
 import { useAuth } from './AuthContext';
+import LoadingOverlay from '../components/LoadingOverlay';
 
 interface GameContextType {
     // Player state
@@ -78,6 +80,7 @@ interface GameProviderProps {
 
 export const GameProvider = ({ children, playerName, setPlayerName }: GameProviderProps) => {
     const { currentUser } = useAuth();
+    const location = useLocation();
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [gameId, setGameId] = useState<string | null>(null);
     const [lobby, setLobby] = useState<LobbyGame | null>(null);
@@ -90,6 +93,7 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         discarding: false,
         cpuMoving: false,
     });
+    const [isRehydrating, setIsRehydrating] = useState(true);
 
     // Tutorial state
     const [isTutorial, setIsTutorial] = useState(false);
@@ -121,6 +125,74 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         setGameId(null);
         setError(null);
     }, [gameWS, lobbyWS]);
+
+    // Rehydrate from URL on mount + refresh
+    useEffect(() => {
+        const tryRecover = async () => {
+            // Only rehydrate on mount or when location changes to a lobby/game 
+            // if we don't already have the state.
+            const path = location.pathname;
+            const isLobbyPath = path.startsWith('/lobby/');
+            const isGamePath = path.startsWith('/game/');
+
+            if (!isLobbyPath && !isGamePath) {
+                setIsRehydrating(false);
+                return;
+            }
+
+            // If we already have the matching state, stop rehydrating
+            if (isLobbyPath) {
+                const lobbyId = path.split('/lobby/')[1]?.split('/')[0];
+                if (lobby?.id === lobbyId) {
+                    setIsRehydrating(false);
+                    return;
+                }
+            }
+            if (isGamePath) {
+                const gameIdFromUrl = path.split('/game/')[1]?.split('/')[0];
+                if (gameId === gameIdFromUrl) {
+                    setIsRehydrating(false);
+                    return;
+                }
+            }
+
+            setIsRehydrating(true);
+            try {
+                if (isLobbyPath) {
+                    const lobbyId = path.split('/lobby/')[1]?.split('/')[0];
+                    if (!lobbyId) return;
+
+                    console.log(`[GameContext] Attempting to rehydrate lobby: ${lobbyId}`);
+                    const lobbyData = await gameService.getLobby(lobbyId);
+                    if (lobbyData) {
+                        setLobby(lobbyData);
+                        // If lobby already started, fetch game too
+                        if (lobbyData.started && lobbyData.game_id) {
+                            const gameData = await gameService.getGame(lobbyData.game_id);
+                            setGameState(gameData);
+                            setGameId(lobbyData.game_id);
+                        }
+                    }
+                } else if (isGamePath) {
+                    const gameIdFromUrl = path.split('/game/')[1]?.split('/')[0];
+                    if (!gameIdFromUrl) return;
+
+                    console.log(`[GameContext] Attempting to rehydrate game: ${gameIdFromUrl}`);
+                    const gameData = await gameService.getGame(gameIdFromUrl);
+                    if (gameData) {
+                        setGameState(gameData);
+                        setGameId(gameIdFromUrl);
+                    }
+                }
+            } catch (err) {
+                console.error('[GameContext] Rehydration failed:', err);
+            } finally {
+                setIsRehydrating(false);
+            }
+        };
+
+        tryRecover();
+    }, [location.pathname, gameService, lobby?.id, gameId]);
 
     // WebSocket connection for lobby room updates
     const lobbyIdForWS = lobby?.id;
@@ -519,6 +591,10 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
         isGuideVisible,
         setGuideVisible
     };
+
+    if (isRehydrating && (location.pathname.startsWith('/lobby/') || location.pathname.startsWith('/game/'))) {
+        return <LoadingOverlay isVisible message="Restoring your game…" />;
+    }
 
     return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
 };

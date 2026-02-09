@@ -1,0 +1,21 @@
+2026-02-08T06:47:31.707Z cypress:cli NODE_OPTIONS is not set
+2026-02-08T06:47:31.711Z cypress:cli parsed cli options { spec: 'cypress/e2e/smoke.cy.ts' }
+2026-02-08T06:47:31.712Z cypress:cli verifying Cypress app
+2026-02-08T06:47:31.712Z cypress:cli checking environment variables
+2026-02-08T06:47:31.712Z cypress:cli checking if executable exists C:\Users\ADMIN\AppData\Local\Cypress\Cache\15.10.0\Cypress\Cypress.exe
+2026-02-08T06:47:31.715Z cypress:cli Binary is executable? : true
+2026-02-08T06:47:31.715Z cypress:cli binaryDir is  C:\Users\ADMIN\AppData\Local\Cypress\Cache\15.10.0\Cypress
+2026-02-08T06:47:31.716Z cypress:cli Reading binary package.json from: C:\Users\ADMIN\AppData\Local\Cypress\Cache\15.10.0\Cypress\resources\app\package.json
+2026-02-08T06:47:31.719Z cypress:cli Found binary version 15.10.0 installed in: C:\Users\ADMIN\AppData\Local\Cypress\Cache\15.10.0\Cypress
+2026-02-08T06:47:31.724Z cypress:cli binary_state.json contents: { verified: true }
+2026-02-08T06:47:31.724Z cypress:cli is Verified ? true
+2026-02-08T06:47:31.726Z cypress:cli Environment variable ELECTRON_RUN_AS_NODE detected, xvfb is not needed
+2026-02-08T06:47:31.726Z cypress:cli needs to start own Xvfb? false
+2026-02-08T06:47:31.726Z cypress:cli spawning, should retry on display problem? false
+2026-02-08T06:47:31.730Z cypress:cli spawn args [ 'C:\\Users\\ADMIN\\AppData\\Local\\Cypress\\Cache\\15.10.0\\Cypress\\resources\\app\\index.js', '--run-project', 'C:\\Users\\ADMIN\\Desktop\\Progging\\Projects\\Personal_Projects\\Njukasino', '--spec', 'cypress/e2e/smoke.cy.ts', '--cwd', 'C:\\Users\\ADMIN\\Desktop\\Progging\\Projects\\Personal_Projects\\Njukasino', '--userNodePath', 'C:\\nvm4w\\nodejs\\node.exe', '--userNodeVersion', '22.18.0' ] { detached: false, stdio: 'pipe', windowsHide: false }
+2026-02-08T06:47:31.730Z cypress:cli spawning Cypress with executable: C:\Users\ADMIN\AppData\Local\Cypress\Cache\15.10.0\Cypress\Cypress.exe
+2026-02-08T06:47:31.744Z cypress:cli piping process STDIN into child STDIN
+2026-02-08T06:47:31.745Z cypress:cli piping child STDOUT to process STDOUT
+2026-02-08T06:47:31.745Z cypress:cli piping child STDERR to process STDERR
+2026-02-08T06:47:31.960Z cypress:cli child event fired { event: 'exit', code: 3221225501, signal: null }
+2026-02-08T06:47:31.960Z cypress:cli child event fired { event: 'close', code: 3221225501, signal: null }

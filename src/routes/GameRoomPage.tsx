@@ -256,13 +256,16 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
 
             {/* Game Table (Blurred if waiting) */}
             {gameState && (
-                <div style={{
-                    filter: isWaitingForPlayers ? 'blur(10px) brightness(0.7)' : 'none',
-                    transition: 'filter 0.5s ease',
-                    pointerEvents: isWaitingForPlayers ? 'none' : 'auto',
-                    width: '100%',
-                    height: '100%'
-                }}>
+                <div 
+                    data-testid="game-table-container"
+                    style={{
+                        filter: isWaitingForPlayers ? 'blur(10px) brightness(0.7)' : 'none',
+                        transition: 'filter 0.5s ease',
+                        pointerEvents: isWaitingForPlayers ? 'none' : 'auto',
+                        width: '100%',
+                        height: '100%'
+                    }}
+                >
                     <LazyGameTable
                         state={gameState}
                         playerName={playerName}
@@ -276,22 +279,26 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
 
             {/* Game Waiting Overlay */}
             {isWaitingForPlayers && (
-                <div className="game-waiting-overlay" style={{
-                    position: 'fixed',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    background: 'rgba(0, 0, 0, 0.85)',
-                    backdropFilter: 'blur(5px)',
-                    color: 'white',
-                    padding: '30px',
-                    borderRadius: '20px',
-                    textAlign: 'center',
-                    zIndex: 1001,
-                    minWidth: '320px',
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-                    border: '1px solid rgba(255,255,255,0.1)'
-                }}>
+                <div 
+                    className="game-waiting-overlay" 
+                    data-testid="waiting-modal"
+                    style={{
+                        position: 'fixed',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        background: 'rgba(0, 0, 0, 0.85)',
+                        backdropFilter: 'blur(5px)',
+                        color: 'white',
+                        padding: '30px',
+                        borderRadius: '20px',
+                        textAlign: 'center',
+                        zIndex: 1001,
+                        minWidth: '320px',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                        border: '1px solid rgba(255,255,255,0.1)'
+                    }}
+                >
                     <h2 style={{ color: '#ffd700', marginBottom: '20px' }}>Waiting for Players</h2>
                     
                     <div style={{ marginBottom: '25px' }}>
@@ -300,7 +307,7 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
                     </div>
 
                     <div style={{ marginBottom: '25px' }}>
-                        <div style={{ fontSize: '1.2em', marginBottom: '10px' }}>
+                        <div style={{ fontSize: '1.2em', marginBottom: '10px' }} data-testid="players-joined">
                             Players Joined: <span style={{ fontWeight: 'bold' }}>{lobby.players.length}/{lobby.max_players}</span>
                         </div>
                         <div style={{ 
