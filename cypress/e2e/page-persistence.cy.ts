@@ -1,53 +1,62 @@
-// cypress/e2e/page-persistence.cy.ts
+/// <reference types="cypress" />
 
-describe('Page refresh keeps user in current view', () => {
+describe('Page Persistence on Refresh', () => {
   beforeEach(() => {
-    cy.signupAndLoginTestUser();
-    cy.intercept('GET', '**/lobby/**').as('fetchLobby');
-    cy.intercept('GET', '**/game/**').as('fetchGame');
+    // Clear state
+    cy.window().then((win) => {
+      win.localStorage.clear();
+    });
+    cy.loginAsTestUser();
   });
 
-  it('recovers waiting lobby view after refresh', () => {
-    // Arrange — get into a non-started lobby
-    cy.visit('/multiplayer');
-    
-    // Ensure we are on the page
-    cy.url().should('include', '/multiplayer');
-    
+  it('restores lobby state after refresh in waiting room', () => {
     // Create a lobby
-    cy.get('[data-testid="create-lobby-btn"]').should('be.visible').click();
-
-    // Check URL and modal
-    cy.url().should('match', /\/lobby\/.+/);
+    cy.visit('/multiplayer');
+    cy.get('[data-testid="create-lobby-btn"]').click();
+    
+    // Verify we are in the lobby and waiting modal is visible
+    cy.url().should('include', '/lobby/');
     cy.get('[data-testid="waiting-modal"]').should('be.visible');
-    cy.get('[data-testid="game-table"]').should('not.exist');
-
-    // Act — refresh
+    
+    // Refresh the page
     cy.reload();
-
-    // Assert — still in lobby, recovered
-    cy.url().should('match', /\/lobby\/.+/);
-    // Note: The rehydration logic will cause a re-fetch
-    cy.get('[data-testid="waiting-modal"]').should('be.visible');
-    cy.get('[data-testid="game-table"]').should('not.exist');
+    
+    // Verify "Restoring your game..." overlay appears (might be too fast to catch sometimes)
+    // cy.contains('Restoring your game').should('be.visible');
+    
+    // Verify we are still in the lobby and waiting modal is restored
+    cy.url().should('include', '/lobby/');
+    cy.get('[data-testid="waiting-modal"]', { timeout: 10000 }).should('be.visible');
+    cy.get('[data-testid="players-joined"]').should('contain', '1/');
   });
 
-  it('recovers active game table after refresh', () => {
-    // This requires a started game. 
-    // We can use the custom command if implemented, or mock it.
-    // Assuming joinLobbyAndStartGame is available in commands.ts
+  it('restores game state after refresh during active gameplay', () => {
+    // Start a tutorial game (easiest way to get into an active game state quickly)
+    cy.visit('/');
+    cy.get('[data-testid="start-tutorial-btn"]').click();
     
-    // 1. Visit multiplayer
-    cy.visit('/multiplayer');
+    // Wait for game table to load
+    cy.url().should('include', '/game/');
+    cy.get('[data-testid="game-table"]', { timeout: 10000 }).should('be.visible');
     
-    // 2. We'll simulate a game start if possible, or just visit a game URL directly 
-    // if the logic allows state recovery from just the ID.
-    // Given the TDD approach, let's visit a dummy game ID and see if it tries to fetch.
-    const dummyGameId = 'test-game-123';
-    cy.visit(`/game/${dummyGameId}`);
+    // Verify we have cards
+    cy.get('[data-testid="player-card"]').should('have.length.at.least', 1);
     
-    // Assert redirect or loading
-    cy.url().should('include', `/game/${dummyGameId}`);
-    // fetchGame intercept should be triggered
+    // Refresh the page
+    cy.reload();
+    
+    // Verify we are still in the game and table is restored
+    cy.url().should('include', '/game/');
+    cy.get('[data-testid="game-table"]', { timeout: 10000 }).should('be.visible');
+    cy.get('[data-testid="player-card"]').should('have.length.at.least', 1);
+  });
+
+  it('redirects to home if lobby/game ID is invalid', () => {
+    // Visit a non-existent lobby
+    cy.visit('/lobby/invalid-id-123');
+    
+    // Should show error and redirect or stay on home
+    // The current implementation might need an error modal check
+    cy.url().should('eq', Cypress.config().baseUrl + '/');
   });
 });

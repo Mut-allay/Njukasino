@@ -129,8 +129,6 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
     // Rehydrate from URL on mount + refresh
     useEffect(() => {
         const tryRecover = async () => {
-            // Only rehydrate on mount or when location changes to a lobby/game 
-            // if we don't already have the state.
             const path = location.pathname;
             const isLobbyPath = path.startsWith('/lobby/');
             const isGamePath = path.startsWith('/game/');
@@ -140,58 +138,65 @@ export const GameProvider = ({ children, playerName, setPlayerName }: GameProvid
                 return;
             }
 
-            // If we already have the matching state, stop rehydrating
-            if (isLobbyPath) {
-                const lobbyId = path.split('/lobby/')[1]?.split('/')[0];
-                if (lobby?.id === lobbyId) {
-                    setIsRehydrating(false);
-                    return;
-                }
+            // Extract IDs from path
+            const lobbyIdFromUrl = isLobbyPath ? path.split('/lobby/')[1]?.split('/')[0] : null;
+            const gameIdFromUrl = isGamePath ? path.split('/game/')[1]?.split('/')[0] : null;
+
+            // If we already have the state and it matches the URL, skip
+            if (isLobbyPath && lobby?.id === lobbyIdFromUrl) {
+                setIsRehydrating(false);
+                return;
             }
-            if (isGamePath) {
-                const gameIdFromUrl = path.split('/game/')[1]?.split('/')[0];
-                if (gameId === gameIdFromUrl) {
-                    setIsRehydrating(false);
-                    return;
-                }
+            if (isGamePath && gameId === gameIdFromUrl) {
+                setIsRehydrating(false);
+                return;
             }
 
+            console.log(`[GameContext] Detected recovery path: ${path}`);
             setIsRehydrating(true);
-            try {
-                if (isLobbyPath) {
-                    const lobbyId = path.split('/lobby/')[1]?.split('/')[0];
-                    if (!lobbyId) return;
+            setError(null);
 
-                    console.log(`[GameContext] Attempting to rehydrate lobby: ${lobbyId}`);
-                    const lobbyData = await gameService.getLobby(lobbyId);
+            try {
+                if (isLobbyPath && lobbyIdFromUrl) {
+                    console.log(`[GameContext] Attempting to recover lobby: ${lobbyIdFromUrl}`);
+                    const lobbyData = await gameService.getLobby(lobbyIdFromUrl);
                     if (lobbyData) {
                         setLobby(lobbyData);
-                        // If lobby already started, fetch game too
                         if (lobbyData.started && lobbyData.game_id) {
+                            console.log(`[GameContext] Lobby already started, fetching game: ${lobbyData.game_id}`);
                             const gameData = await gameService.getGame(lobbyData.game_id);
                             setGameState(gameData);
                             setGameId(lobbyData.game_id);
                         }
+                    } else {
+                        throw new Error("Lobby not found");
                     }
-                } else if (isGamePath) {
-                    const gameIdFromUrl = path.split('/game/')[1]?.split('/')[0];
-                    if (!gameIdFromUrl) return;
-
-                    console.log(`[GameContext] Attempting to rehydrate game: ${gameIdFromUrl}`);
+                } else if (isGamePath && gameIdFromUrl) {
+                    console.log(`[GameContext] Attempting to recover game: ${gameIdFromUrl}`);
                     const gameData = await gameService.getGame(gameIdFromUrl);
                     if (gameData) {
                         setGameState(gameData);
                         setGameId(gameIdFromUrl);
+                    } else {
+                        throw new Error("Game not found");
                     }
                 }
             } catch (err) {
                 console.error('[GameContext] Rehydration failed:', err);
+                setError(err instanceof Error ? err.message : "Failed to restore game session");
+                // Clear state on failure so child components don't try to use stale data
+                setLobby(null);
+                setGameState(null);
+                setGameId(null);
             } finally {
-                setIsRehydrating(false);
+                // Add a small delay for smoother transition
+                setTimeout(() => setIsRehydrating(false), 500);
             }
         };
 
-        tryRecover();
+        // Delay recovery slightly to ensure auth and player name are stable
+        const timer = setTimeout(tryRecover, 100);
+        return () => clearTimeout(timer);
     }, [location.pathname, gameService, lobby?.id, gameId]);
 
     // WebSocket connection for lobby room updates
