@@ -1,0 +1,7 @@
+src/components/AnimatedCard.tsx(3,16): error TS1484: 'CardProps' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/AnimatedCard.tsx(3,16): error TS6133: 'CardProps' is declared but its value is never read.
+src/components/AnimatedCard.tsx(39,3): error TS6133: 'index' is declared but its value is never read.
+src/components/AnimatedCard.tsx(44,3): error TS6133: 'doubleBacked' is declared but its value is never read.
+src/components/AnimatedCard.tsx(50,18): error TS6133: 'setZIndex' is declared but its value is never read.
+src/components/AnimatedCard.tsx(51,10): error TS6133: 'isAnimating' is declared but its value is never read.
+src/routes/__tests__/GameRoomPage.test.tsx(1,18): error TS2305: Module '"@testing-library/react"' has no exported member 'screen'.
