@@ -270,21 +270,20 @@ export const GameTable: React.FC<GameTableProps> = ({
       prevYourHandLength.current = currentHandLength;
     }
 
-    // 2. Detect opponent draws
+    // 2. Detect opponent draws AND discards
     state.players.forEach((player) => {
-      if (player.name === playerName) return // Skip yourself, handleDraw does it
+      if (player.name === playerName) return // Skip yourself, handleDraw/handleCardClick does it
       
       const prevLength = prevHandLengths.current[player.name] ?? 0
       const currentLength = player.hand.length
       
+      // OPPONENT DREW A CARD
       if (currentLength > prevLength && prevLength > 0) {
-        // Opponent drew a card
         const deckEl = document.querySelector('.deck-area .card')
         const handEl = document.querySelector(`.player-seat.${getSeatPos(player.name)} .hand`)
         
         if (deckEl && handEl) {
           const startPos = getRelativePos(deckEl)
-          // For opponents, we can just aim for the center of their hand
           const endPos = getRelativePos(handEl)
           
           setAnimatingDraw({
@@ -303,6 +302,38 @@ export const GameTable: React.FC<GameTableProps> = ({
           setTimeout(() => setAnimatingDraw(null), 1000)
         }
       }
+      
+      // OPPONENT DISCARDED A CARD
+      if (currentLength < prevLength && prevLength > 0) {
+        const handEl = document.querySelector(`.player-seat.${getSeatPos(player.name)} .hand`)
+        const discardEl = document.querySelector('.discard-area .discard-top') 
+                       || document.querySelector('.discard-area .discard-empty')
+        
+        if (handEl && discardEl) {
+          const startPos = getRelativePos(handEl)
+          const endPos = getRelativePos(discardEl)
+          
+          const deltaX = endPos.centerX - startPos.centerX
+          const deltaY = endPos.centerY - startPos.centerY
+          
+          setAnimatingDiscard({
+            card: { value: '', suit: '' }, // Facedown for opponents
+            style: {
+              left: `${startPos.centerX}px`,
+              top: `${startPos.centerY}px`,
+              width: `50px`, // Small card size for opponents
+              height: `75px`,
+              '--dest-x': `${deltaX}px`,
+              '--dest-y': `${deltaY}px`,
+              '--rotation': `${(Math.random() * 20) - 10}deg`
+            } as React.CSSProperties
+          })
+          
+          const animationDuration = window.innerWidth <= 768 ? 1200 : 800
+          setTimeout(() => setAnimatingDiscard(null), animationDuration)
+        }
+      }
+      
       prevHandLengths.current[player.name] = currentLength
     })
   }, [state.players, playerName, yourPlayer?.hand.length, getRelativePos, getSeatPos])
