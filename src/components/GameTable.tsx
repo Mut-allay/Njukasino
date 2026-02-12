@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import Card from './Card'
+import AnimatedCard from './AnimatedCard' // Imported AnimatedCard
 import { useGame } from '../contexts/GameContext'
 import { useAuth } from '../contexts/AuthContext'
 import { doc, onSnapshot } from 'firebase/firestore'
@@ -62,12 +63,34 @@ export const GameTable: React.FC<GameTableProps> = ({
   const { isTutorial, tutorialStep, nextTutorialStep, setGuideVisible } = useGame();
   const { userData } = useAuth();
   const tableRef = useRef<HTMLDivElement>(null)
+  const deckRef = useRef<HTMLDivElement>(null); // Ref for deck position
+  
+  // Refs for player hands to calculate targets
+  const bottomHandRef = useRef<HTMLDivElement>(null);
+  const topHandRef = useRef<HTMLDivElement>(null);
+  const leftHandRef = useRef<HTMLDivElement>(null);
+  const rightHandRef = useRef<HTMLDivElement>(null);
+
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null)
   const [showDeckHighlight, setShowDeckHighlight] = useState(false)
   const [discardingCardIndex, setDiscardingCardIndex] = useState<number | null>(null)
   
   // Real-time balances for all players
   const [playerBalances, setPlayerBalances] = useState<Record<string, number>>({});
+
+  // Position state for animations
+  const [deckPos, setDeckPos] = useState<{ x: number; y: number } | null>(null);
+  const [handPositions, setHandPositions] = useState<{
+    bottom: { x: number; y: number }[];
+    top: { x: number; y: number }[];
+    left: { x: number; y: number }[];
+    right: { x: number; y: number }[];
+  }>({
+    bottom: [],
+    top: [],
+    left: [],
+    right: [],
+  });
 
   // Listen to Firestore for player balances if UIDs are available
   useEffect(() => {
@@ -108,7 +131,6 @@ export const GameTable: React.FC<GameTableProps> = ({
   } | null>(null)
   
   const [animatingDraw, setAnimatingDraw] = useState<{
-// ... (rest of the component structure remains the same, but using playerBalances)
     card: CardType,
     style: React.CSSProperties,
     playerName: string
@@ -177,6 +199,57 @@ export const GameTable: React.FC<GameTableProps> = ({
     return 'bottom'
   }, [seatPlayers.top?.name, seatPlayers.left?.name, seatPlayers.right?.name]);
 
+
+  // --- CALCULATE ANIMATION POSITIONS ---
+  useEffect(() => {
+    const calculatePositions = () => {
+      if (deckRef.current && tableRef.current) {
+        const tableRect = tableRef.current.getBoundingClientRect();
+        const deckRect = deckRef.current.getBoundingClientRect();
+        
+        // Deck position relative to table
+        setDeckPos({
+          x: deckRect.left - tableRect.left,
+          y: deckRect.top - tableRect.top,
+        });
+
+        const cardWidth = 70; // Approximation, better to measure
+        const cardSpacing = 10;
+        
+        // Helper to calculate positions for a hand
+        // We look for RefObject<HTMLDivElement> which allows null
+        const getPositions = (ref: React.RefObject<HTMLDivElement | null>, count: number, isVertical = false) => {
+            if (!ref.current) return [];
+            const handRect = ref.current.getBoundingClientRect();
+            return Array.from({ length: count }).map((_, i) => ({
+                x: (handRect.left - tableRect.left) + (isVertical ? 0 : i * (cardWidth/2 + cardSpacing)), // Tighter overlap
+                y: (handRect.top - tableRect.top) + (isVertical ? i * (cardWidth/2 + cardSpacing) : 0),
+            }));
+        };
+
+        setHandPositions({
+            bottom: getPositions(bottomHandRef, yourPlayer?.hand?.length || 0),
+            top: getPositions(topHandRef, seatPlayers.top?.hand?.length || 0),
+            left: getPositions(leftHandRef, seatPlayers.left?.hand?.length || 0, true),
+            right: getPositions(rightHandRef, seatPlayers.right?.hand?.length || 0, true),
+        });
+      }
+    };
+
+    // Recalculate on mount, resize, and when hand sizes change
+    calculatePositions();
+    window.addEventListener('resize', calculatePositions);
+    
+    // Slight delay to ensure DOM is ready
+    const timer = setTimeout(calculatePositions, 100);
+    
+    return () => {
+        window.removeEventListener('resize', calculatePositions);
+        clearTimeout(timer);
+    };
+  }, [state.players, seatPlayers, yourPlayer?.hand?.length]);
+
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowDeckHighlight(true)
@@ -197,21 +270,20 @@ export const GameTable: React.FC<GameTableProps> = ({
       prevYourHandLength.current = currentHandLength;
     }
 
-    // 2. Detect opponent draws
+    // 2. Detect opponent draws AND discards
     state.players.forEach((player) => {
-      if (player.name === playerName) return // Skip yourself, handleDraw does it
+      if (player.name === playerName) return // Skip yourself, handleDraw/handleCardClick does it
       
       const prevLength = prevHandLengths.current[player.name] ?? 0
       const currentLength = player.hand.length
       
+      // OPPONENT DREW A CARD
       if (currentLength > prevLength && prevLength > 0) {
-        // Opponent drew a card
         const deckEl = document.querySelector('.deck-area .card')
         const handEl = document.querySelector(`.player-seat.${getSeatPos(player.name)} .hand`)
         
         if (deckEl && handEl) {
           const startPos = getRelativePos(deckEl)
-          // For opponents, we can just aim for the center of their hand
           const endPos = getRelativePos(handEl)
           
           setAnimatingDraw({
@@ -230,6 +302,38 @@ export const GameTable: React.FC<GameTableProps> = ({
           setTimeout(() => setAnimatingDraw(null), 1000)
         }
       }
+      
+      // OPPONENT DISCARDED A CARD
+      if (currentLength < prevLength && prevLength > 0) {
+        const handEl = document.querySelector(`.player-seat.${getSeatPos(player.name)} .hand`)
+        const discardEl = document.querySelector('.discard-area .discard-top') 
+                       || document.querySelector('.discard-area .discard-empty')
+        
+        if (handEl && discardEl) {
+          const startPos = getRelativePos(handEl)
+          const endPos = getRelativePos(discardEl)
+          
+          const deltaX = endPos.centerX - startPos.centerX
+          const deltaY = endPos.centerY - startPos.centerY
+          
+          setAnimatingDiscard({
+            card: { value: '', suit: '' }, // Facedown for opponents
+            style: {
+              left: `${startPos.centerX}px`,
+              top: `${startPos.centerY}px`,
+              width: `50px`, // Small card size for opponents
+              height: `75px`,
+              '--dest-x': `${deltaX}px`,
+              '--dest-y': `${deltaY}px`,
+              '--rotation': `${(Math.random() * 20) - 10}deg`
+            } as React.CSSProperties
+          })
+          
+          const animationDuration = window.innerWidth <= 768 ? 1200 : 800
+          setTimeout(() => setAnimatingDiscard(null), animationDuration)
+        }
+      }
+      
       prevHandLengths.current[player.name] = currentLength
     })
   }, [state.players, playerName, yourPlayer?.hand.length, getRelativePos, getSeatPos])
@@ -252,15 +356,40 @@ export const GameTable: React.FC<GameTableProps> = ({
       playSound('shuffle')
       setTimeout(() => {
         setIsShuffling(false)
-        // Start dealing animation after shuffle
-        const handSize = yourPlayer?.hand.length || 0
-        if (handSize > 0) {
-          setDealingCards(new Array(handSize).fill(true))
-          setTimeout(() => setDealingCards([]), handSize * 250 + 2200)
-        }
       }, window.innerWidth <= 768 ? 2000 : 2000)
     }
   }, [state?.id, isGameOver, state, yourPlayer?.hand.length, playSound])
+
+  // EFFECT TO TRIGGER DEAL ANIMATION WHEN HAND POPULATES
+  // This watches for when cards appear in the hand (length 0 -> >0)
+  // and triggers the "dealing" state which renders AnimatedCard.
+  useEffect(() => {
+    // Only trigger if we have cards, no current dealing state, and not shuffling
+    const handSize = yourPlayer?.hand?.length || 0;
+    
+    // Check if we should start the deal animation
+    if (handSize > 0 && dealingCards.length === 0 && !isShuffling) {
+       // We only want to trigger this ONCE per game or hand deal.
+       // Ideally, we'd check if we just transitioned from 0 cards.
+       // However, we don't have the previous length easily accessible in this scope 
+       // without another ref or effect. 
+       // For now, if we have cards and `dealingCards` is empty, we assume we might need to animate.
+       // But to prevent constant re-triggering, we should likely rely on `isShuffling` finishing
+       // OR check `prevYourHandLength` which we track above!
+       
+       if (prevYourHandLength.current === 0 && handSize > 0) {
+           const newDealing = new Array(handSize).fill(true);
+           setDealingCards(newDealing);
+           
+           // Clear dealing state after enough time for all staggered animations to finish
+           // Max delay (e.g. 1200ms) + animation duration (e.g. 1000ms)
+           const maxDelay = (handSize * 200 + 1200); 
+           setTimeout(() => {
+               setDealingCards([]);
+           }, maxDelay + 1000);
+       }
+    }
+  }, [yourPlayer?.hand.length, isShuffling, dealingCards.length]);
 
   // Early return after all hooks
   if (!yourPlayer || !currentPlayer) {
@@ -456,9 +585,26 @@ export const GameTable: React.FC<GameTableProps> = ({
             </h3>
             <span className="player-wallet">K{(playerBalances[seatPlayers.top.name] || 0).toLocaleString()}</span>
           </div>
-          <div className="hand horizontal" aria-label={`${seatPlayers.top.name}'s hand with ${seatPlayers.top.hand.length} cards`}>
+          <div className="hand horizontal" ref={topHandRef} aria-label={`${seatPlayers.top.name}'s hand with ${seatPlayers.top.hand.length} cards`}>
             {seatPlayers.top.hand.map((card, i) => {
               const isDrawingCard = animatingDraw?.playerName === seatPlayers.top?.name && i === seatPlayers.top.hand.length - 1;
+              
+              if (dealingCards[i]) {
+                return (
+                  <AnimatedCard
+                    key={`top-${i}`}
+                    card={card}
+                    index={i}
+                    startPos={deckPos || { x: 0, y: 0 }}
+                    targetPos={handPositions.top[i] || { x: 0, y: 0 }}
+                    size={50} // Small card
+                    faceDown={true}
+                    flipOnDeal={true}
+                    delay={i * 200}
+                  />
+                )
+              }
+
               return (
                 <Card
                   key={i}
@@ -489,9 +635,24 @@ export const GameTable: React.FC<GameTableProps> = ({
             </h3>
             <span className="player-wallet">K{(playerBalances[seatPlayers.left.name] || 0).toLocaleString()}</span>
           </div>
-          <div className="hand horizontal" aria-label={`${seatPlayers.left.name}'s hand with ${seatPlayers.left.hand.length} cards`}>
+          <div className="hand horizontal" ref={leftHandRef} aria-label={`${seatPlayers.left.name}'s hand with ${seatPlayers.left.hand.length} cards`}>
             {seatPlayers.left.hand.map((card, i) => {
               const isDrawingCard = animatingDraw?.playerName === seatPlayers.left?.name && i === seatPlayers.left.hand.length - 1;
+              if (dealingCards[i]) {
+                return (
+                  <AnimatedCard
+                    key={`left-${i}`}
+                    card={card}
+                    index={i}
+                    startPos={deckPos || { x: 0, y: 0 }}
+                    targetPos={handPositions.left[i] || { x: 0, y: 0 }}
+                    size={50}
+                    faceDown={true}
+                    flipOnDeal={true}
+                    delay={i * 200 + 400} // Stagger after top
+                  />
+                )
+              }
               return (
                 <Card
                   key={`left-${i}`}
@@ -522,9 +683,24 @@ export const GameTable: React.FC<GameTableProps> = ({
             </h3>
             <span className="player-wallet">K{(playerBalances[seatPlayers.right.name] || 0).toLocaleString()}</span>
           </div>
-          <div className="hand horizontal" aria-label={`${seatPlayers.right.name}'s hand with ${seatPlayers.right.hand.length} cards`}>
+          <div className="hand horizontal" ref={rightHandRef} aria-label={`${seatPlayers.right.name}'s hand with ${seatPlayers.right.hand.length} cards`}>
             {seatPlayers.right.hand.map((card, i) => {
               const isDrawingCard = animatingDraw?.playerName === seatPlayers.right?.name && i === seatPlayers.right.hand.length - 1;
+               if (dealingCards[i]) {
+                return (
+                  <AnimatedCard
+                    key={`right-${i}`}
+                    card={card}
+                    index={i}
+                    startPos={deckPos || { x: 0, y: 0 }}
+                    targetPos={handPositions.right[i] || { x: 0, y: 0 }}
+                    size={50}
+                    faceDown={true}
+                    flipOnDeal={true}
+                    delay={i * 200 + 800} // Stagger after left
+                  />
+                )
+              }
               return (
                 <Card
                   key={`right-${i}`}
@@ -549,6 +725,7 @@ export const GameTable: React.FC<GameTableProps> = ({
             role="button"
             tabIndex={canDraw ? 0 : -1}
             aria-label={`Deck with ${state.deck?.length ?? 0} cards remaining${canDraw ? ", click to draw a card" : ""}`}
+            ref={deckRef} // Added ref here
             onKeyDown={(e) => {
               if (canDraw && (e.key === 'Enter' || e.key === ' ')) {
                 e.preventDefault()
@@ -597,10 +774,30 @@ export const GameTable: React.FC<GameTableProps> = ({
           <h4 className="player-name">{yourPlayer.name} (You)</h4>
           <span className="player-wallet">K{(playerBalances[yourPlayer.name] || 0).toLocaleString()}</span>
         </div>
-        <div className="hand" aria-label={`Your hand with ${yourPlayer.hand?.length || 0} cards`}>
+        <div className="hand" ref={bottomHandRef} aria-label={`Your hand with ${yourPlayer.hand?.length || 0} cards`}>
           {yourPlayer.hand?.map((card, i) => {
             const isDealing = dealingCards[i] || false
-            const delayClass = isDealing ? `deal-delay-${Math.min(i + 1, 7)}` : ""
+            
+            // Use AnimatedCard if dealing
+            if (isDealing) {
+                return (
+                    <AnimatedCard
+                        key={`you-animated-${i}`}
+                        card={card}
+                        index={i}
+                        startPos={deckPos || { x: 0, y: 0 }}
+                        targetPos={handPositions.bottom[i] || { x: 0, y: 0 }}
+                        size={70}
+                        faceDown={true} // Start facedown from deck
+                        flipOnDeal={true}
+                        delay={i * 200 + 1200} // Stagger after right
+                        onAnimationEnd={() => {
+                            // Optional: Could clear dealingCards[i] here individually
+                        }}
+                    />
+                );
+            }
+
             const isDrawing = drawingCardIndex === i // Check if this is the card being drawn
             
             return (
@@ -617,7 +814,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                   isDealing ||
                   isDrawing
                 }
-                className={`${isDealing ? `card-dealing ${delayClass}` : ""} ${isDrawing ? "card-drawing" : ""} ${isTutorial && tutorialStep === 6 ? "tutorial-highlight" : ""}`}
+                className={`${isDealing ? `card-dealing` : ""} ${isDrawing ? "card-drawing" : ""} ${isTutorial && tutorialStep === 6 ? "tutorial-highlight" : ""}`}
                 highlight={isWinner(yourPlayer)}
                 selected={selectedCardIndex === i}
                 style={{
