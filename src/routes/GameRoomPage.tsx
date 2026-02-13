@@ -49,16 +49,23 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
     }, [lobbyId, urlGameId, lobby?.started, lobby?.game_id, gameId, navigate]);
 
 
-    // Handle "Player Exited" WebSocket messages
+    // Handle "Player left" WebSocket messages (from backend broadcast after /game/quit)
     useEffect(() => {
         if (!gameWS) return;
         
         const originalOnMessage = gameWS.onmessage;
         gameWS.onmessage = (event) => {
-            const message = JSON.parse(event.data);
-            if (message.type === 'player_exited') {
-                setExitedPlayer(message.data.player_name);
-                setTimeout(() => setExitedPlayer(null), 5000); // Clear after 5s
+            try {
+                const message = JSON.parse(event.data);
+                if (message.type === 'player_left' || message.type === 'player_exited') {
+                    const name = message.data?.player_name;
+                    if (name) {
+                        setExitedPlayer(name);
+                        setTimeout(() => setExitedPlayer(null), 5000);
+                    }
+                }
+            } catch {
+                // ignore parse errors
             }
             if (originalOnMessage) {
                 originalOnMessage.call(gameWS, event);
@@ -190,7 +197,7 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
                     boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
                     animation: 'fadeInOut 5s forwards'
                 }}>
-                    🚶 {exitedPlayer} has exited the game
+                    🚶 {exitedPlayer} has left the game
                 </div>
             )}
 
@@ -349,7 +356,7 @@ export const GameRoomPage = ({ playSound }: GameRoomPageProps) => {
             <LazyGameOverModal
                 isOpen={!!gameState.game_over}
                 onClose={handleQuitGame}
-                winner={gameState.winner || 'Unknown'}
+                winner={gameState.winner ?? null}
                 winnerHand={gameState.winner_hand}
                 onNewGame={handleQuitGame}
                 winAmount={gameState.pot_amount}

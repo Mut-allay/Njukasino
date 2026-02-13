@@ -178,6 +178,20 @@ class ConnectionManager:
         for pn in disconnected:
             self.disconnect_from_game(game_id, pn)
 
+    async def broadcast_player_left(self, game_id: str, player_name: str):
+        """Notify remaining players that a player left (for toast)."""
+        if game_id not in self.game_connections:
+            return
+        message = json.dumps({"type": "player_left", "data": {"player_name": player_name}})
+        disconnected = []
+        for pn, ws in self.game_connections[game_id].items():
+            try:
+                await ws.send_text(message)
+            except Exception:
+                disconnected.append(pn)
+        for pn in disconnected:
+            self.disconnect_from_game(game_id, pn)
+
     async def broadcast_lobby_update(self, lobby_id: str, lobby: LobbyGame):
         if lobby_id not in self.lobby_connections:
             return
@@ -638,6 +652,97 @@ async def get_game(game_id: str):
     if game_id not in active_games:
         raise HTTPException(status_code=404, detail="Game not found")
     return active_games[game_id].dict()
+
+
+async def distribute_forfeit_pot(game: GameState):
+    """When all players quit, transfer full pot to house. No refund to any player."""
+    if game.pot_amount <= 0:
+        return
+    game.house_cut = game.pot_amount
+    game.winner_amount = 0
+    try:
+        house_ref = db.collection('house').document('admin')
+        @firestore.transactional
+        def update_house(transaction):
+            house_snapshot = house_ref.get(transaction=transaction)
+            if house_snapshot.exists:
+                house_data = house_snapshot.to_dict()
+                current_balance = house_data.get('wallet_balance', 0)
+                transaction.update(house_ref, {'wallet_balance': current_balance + game.pot_amount})
+                return current_balance + game.pot_amount
+            else:
+                transaction.set(house_ref, {'wallet_balance': game.pot_amount})
+                return game.pot_amount
+        update_house(db.transaction())
+        logger.info(f"Full forfeit: transferred pot {game.pot_amount} to house for game {game.id}")
+        db.collection('transactions').add({
+            'type': 'game_forfeit_pot',
+            'game_id': game.id,
+            'pot_amount': game.pot_amount,
+            'timestamp': firestore.SERVER_TIMESTAMP
+        })
+    except Exception as e:
+        logger.error(f"Failed to distribute forfeit pot for game {game.id}: {e}")
+
+
+@app.post("/game/{game_id}/quit")
+async def quit_game(game_id: str, player_uid: str = Query(...)):
+    """Player quits/forfeits. No refund.
+    If one player remains (others quit): that player is declared winner; 90% to winner, 10% to house.
+    If all players quit: full pot goes to house. Otherwise game continues with remaining players.
+    Once a winner is declared, further quit calls are ignored (no second quit)."""
+    if game_id not in active_games:
+        raise HTTPException(status_code=404, detail="Game not found")
+    game = active_games[game_id]
+
+    # No second quit: if a winner is already declared, return current state unchanged
+    if game.game_over:
+        return game.dict()
+
+    # Find player index by uid (prevent double-quit: must own the seat)
+    player_index = next((i for i, p in enumerate(game.players) if p.uid == player_uid), None)
+    if player_index is None:
+        raise HTTPException(status_code=404, detail="Player not in this game")
+
+    # Remove player (no refund)
+    removed_name = game.players[player_index].name
+    game.players.pop(player_index)
+    new_len = len(game.players)
+
+    # Update lobby if exists (keep in sync)
+    for lobby in active_lobbies.values():
+        if lobby.game_id == game_id and player_uid in lobby.player_uids:
+            idx = lobby.player_uids.index(player_uid)
+            lobby.player_uids.pop(idx)
+            lobby.players.pop(idx)
+            lobby.last_updated = datetime.now()
+            break
+
+    # One player left = they win (90% to winner, 10% to house). Zero left = full pot to house.
+    # (If game was already over we returned above.)
+    if new_len == 1:
+        remaining = game.players[0]
+        game.winner = remaining.name
+        game.winner_hand = [c.model_dump() for c in remaining.hand] if remaining.hand else []
+        game.game_over = True
+        await distribute_winnings(game)
+    elif new_len == 0:
+        game.winner = ""
+        game.winner_hand = []
+        game.game_over = True
+        await distribute_forfeit_pot(game)
+    else:
+        # Multiple players left: adjust current_player and game continues
+        if game.current_player >= new_len:
+            game.current_player = new_len - 1 if new_len else 0
+        elif player_index < game.current_player:
+            game.current_player = (game.current_player - 1) % new_len
+
+    # Notify remaining players (for toast "Player X has left")
+    await manager.broadcast_player_left(game_id, removed_name)
+    await manager.broadcast_game_update(game_id, game)
+    return game.dict()
+
 
 @app.post("/game/{game_id}/draw")
 async def draw_card(game_id: str):

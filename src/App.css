@@ -3473,6 +3473,56 @@ button:disabled {
   display: flex;
 }
 
+/* Quit confirm modal */
+.quit-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+.quit-confirm-modal {
+  background: rgba(15, 30, 45, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 320px;
+  text-align: center;
+}
+.quit-confirm-modal h3 {
+  margin: 0 0 12px;
+  color: #f8d56b;
+  font-size: 1.2em;
+}
+.quit-confirm-modal p {
+  margin: 0 0 20px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.95em;
+}
+.quit-confirm-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.quit-confirm-cancel,
+.quit-confirm-submit {
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+}
+.quit-confirm-cancel {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+.quit-confirm-submit {
+  background: #ff6b6b;
+  color: white;
+}
+
 /* Expanded Panels */
 .expanded-panel {
   background: rgba(15, 30, 45, 0.95);

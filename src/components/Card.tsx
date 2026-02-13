@@ -86,9 +86,10 @@ export const Card = React.memo(function Card({
   const [isHovered, setIsHovered] = useState(false)
   const [touchStart, setTouchStart] = useState(0)
   const [touchStartTime, setTouchStartTime] = useState(0)
+  const [imageError, setImageError] = useState(false)
 
-  // ⬇️ REFACTORED LOGIC TO USE THE MAP ⬇️
-  const imageUrl = cardImageMap[value + suit];
+  const imageUrl = cardImageMap[value + suit]
+  const showImage = imageUrl && !imageError
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStart(e.touches[0].clientX)
@@ -159,18 +160,20 @@ export const Card = React.memo(function Card({
       {...props}
     >
       <div className="card-inner">
-        {imageUrl ? (
+        {showImage ? (
           <img
             src={imageUrl}
             alt={`${value} of ${suit}`}
             className="card-face-image"
+            data-testid="card-face-image"
             loading="lazy"
             decoding="async"
+            onError={() => setImageError(true)}
           />
         ) : (
           <>
-            <span className="card-value">{value}</span>
-            <span className="card-suit">{suit}</span>
+            <span className="card-value" data-testid="card-value">{value}</span>
+            <span className="card-suit" data-testid="card-suit">{suit}</span>
           </>
         )}
       </div>

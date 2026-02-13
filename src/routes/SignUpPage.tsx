@@ -166,7 +166,7 @@ export const SignUpPage = () => {
                 name="phone"
                 value={formData.phone}
                 onChange={handleInputChange}
-                placeholder="9 74 46 40 60"
+                placeholder="977 123 456"
                 disabled={isSubmitting}
                 className="phone-number-input"
               />

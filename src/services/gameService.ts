@@ -168,6 +168,14 @@ export class GameService {
     );
   }
 
+  async quitGame(gameId: string, playerUid: string): Promise<void> {
+    await this.fetchWithErrorHandling(
+      `${API}/game/${gameId}/quit?player_uid=${encodeURIComponent(playerUid)}`,
+      { method: 'POST' },
+      'quitGame'
+    );
+  }
+
   async startLobby(lobbyId: string, hostUid: string): Promise<{ lobby: LobbyGame; game: GameState }> {
     return this.fetchWithErrorHandling(
       `${API}/lobby/${lobbyId}/start?host_uid=${encodeURIComponent(hostUid)}`,

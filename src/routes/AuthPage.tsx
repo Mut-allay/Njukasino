@@ -101,11 +101,11 @@ export const AuthPage = () => {
                 className="country-code-select"
               >
                 <option value="+260">🇿🇲 Zambia (+260)</option>
-                <option value="+1">🇺🇸 USA/Canada (+1)</option>
+                {/* <option value="+1">🇺🇸 USA/Canada (+1)</option>
                 <option value="+44">🇬🇧 UK (+44)</option>
                 <option value="+91">🇮🇳 India (+91)</option>
                 <option value="+27">🇿🇦 South Africa (+27)</option>
-                <option value="+234">🇳🇬 Nigeria (+234)</option>
+                <option value="+234">🇳🇬 Nigeria (+234)</option> */}
               </select>
               <input
                 type="tel"
@@ -113,7 +113,7 @@ export const AuthPage = () => {
                 name="phone"
                 value={formData.phone}
                 onChange={handleInputChange}
-                placeholder="9 74 46 40 60"
+                placeholder="977 123 456"
                 disabled={isSubmitting}
                 className="phone-number-input"
               />

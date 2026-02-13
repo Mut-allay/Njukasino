@@ -37,10 +37,10 @@ export const MultiplayerPage = ({
   ];
 
   const feeOptions = [
-    { label: 'K100', value: 100, icon: <Coins size={14} /> },
-    { label: 'K500', value: 500, icon: <Coins size={14} /> },
-    { label: 'K1,000', value: 1000, icon: <Coins size={16} /> },
-    { label: 'K5,000', value: 5000, icon: <Coins size={18} /> },
+    { label: 'K100', value: 2, icon: <Coins size={14} /> },
+    { label: 'K500', value: 50, icon: <Coins size={14} /> },
+    { label: 'K1,000', value: 100, icon: <Coins size={16} /> },
+    { label: 'K5,000', value: 1000, icon: <Coins size={18} /> },
   ];
 
   return (
@@ -76,7 +76,7 @@ export const MultiplayerPage = ({
           <div className="custom-amount-container">
             <label className="selection-label">AMOUNT (ZMW)</label>
             <div className="custom-amount-input-wrapper">
-              <span className="amount-prefix">$</span>
+              <span className="amount-prefix">K</span>
               <input
                 type="number"
                 value={entryFee || 0}
@@ -85,7 +85,7 @@ export const MultiplayerPage = ({
                 placeholder="0"
                 min="0"
               />
-              <span className="amount-suffix">K</span>
+              {/* <span className="amount-suffix">K</span> */}
             </div>
             {entryFee < 1 && (
               <p className="fee-error-message" style={{ color: '#f44336', fontSize: '12px', marginTop: '4px' }}>

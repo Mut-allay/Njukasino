@@ -66,11 +66,11 @@ export const Onboarding = () => {
     }
 
     // Check format: 3-20 chars, letters/numbers/underscores/hyphens
-    const usernameRegex = /^[a-zA-Z0-9_-]{3,20}$/;
+    const usernameRegex = /^[a-zA-Z0-9_-]{3,10}$/;
     if (!usernameRegex.test(value)) {
       return {
         isValid: false,
-        message: 'Username must be 3-20 characters (letters, numbers, _, -)'
+        message: 'Username must be 3-10 characters (letters, numbers, _, -)'
       };
     }
 
@@ -268,7 +268,7 @@ export const Onboarding = () => {
                 )}
               </div>
               <p className="input-hint">
-                3-20 characters: letters, numbers, underscores, hyphens
+                3-10 characters: letters, numbers, underscores, hyphens
               </p>
             </div>
           )}
