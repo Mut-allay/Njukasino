@@ -31,7 +31,7 @@ rubric.md
 njuka-ui-ux-assessment.md
 
 
-.claude
+.claude/
 # Backend files (should only exist in backend/ directory)
 # Prevent accidental commits of backend files at root
 
