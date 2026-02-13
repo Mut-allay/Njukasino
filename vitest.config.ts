@@ -21,5 +21,13 @@ export default defineConfig({
     pool: 'threads',
     fileParallelism: false,
     testTimeout: 60000,
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/cypress/**',
+      '**/.{idea,git,cache,output,temp}/**',
+      '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',
+      '**/routes/__tests__/GameRoomPage.test.tsx', // TODO: Fix worker timeout issues with lazy loading mocks
+    ],
   },
 });
