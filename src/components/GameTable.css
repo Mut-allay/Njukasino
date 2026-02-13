@@ -566,7 +566,7 @@
 .bottom .hand {
   position: relative;
   transition: none !important; /* Prevent any hand movement */
-  min-height: 65px; /* Mobile card height */
+  min-height: 72px; /* Mobile card height */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -865,8 +865,8 @@
   }
 
   .card {
-    width: 45px;
-    height: 65px;
+    width: 48px;
+    height: 72px;
     min-width: 48px;
     min-height: 72px;
     margin: 0 -8px;
@@ -875,8 +875,8 @@
     margin-left: -12px;
   }
   .card.small-card {
-    width: 35px;
-    height: 50px;
+    width: 40px;
+    height: 60px;
     min-width: 40px;
     min-height: 60px;
     margin: 0 -6px;
@@ -897,6 +897,17 @@
   .bottom .card.small-card + .card.small-card {
     margin-left: 3px;
   }
+  .card-face-image {
+    width: calc(100% + 8px);
+    height: calc(100% + 8px);
+    margin: -4px 0 0 -4px;
+  }
+  .card.small-card .card-face-image {
+    width: calc(100% + 6px);
+    height: calc(100% + 6px);
+    margin: -3px 0 0 -3px;
+  }
+
   .card:hover {
   transform: translateY(-8px) rotateX(10deg) rotateY(10deg);
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
@@ -979,7 +990,7 @@
     padding: 0;
     margin: 0;
     /* Exact mobile card height for perfect fit */
-    height: 65px;
+    height: 72px;
     align-items: center;
     /* Mobile performance optimization */
     box-sizing: border-box;
@@ -993,7 +1004,7 @@
     bottom: 0;
     border-radius: 4px;
     /* Strict height constraint for mobile */
-    max-height: 65px;
+    max-height: 72px;
     box-sizing: border-box;
     /* Mobile performance */
     will-change: opacity, transform;
