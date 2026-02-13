@@ -30,6 +30,8 @@ roadmap.md
 rubric.md
 njuka-ui-ux-assessment.md
 
+
+.claude
 # Backend files (should only exist in backend/ directory)
 # Prevent accidental commits of backend files at root
 

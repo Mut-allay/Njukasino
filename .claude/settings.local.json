@@ -8,7 +8,9 @@
       "Bash(git pull:*)",
       "Bash(git add:*)",
       "Bash(git reset:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix mobile card display, add profile page, restructure landing page, fix refresh redirect\n\n- Fix white cards on mobile portrait: remove broken <picture> webp/avif sources,\n  align card width/height with min-width/min-height in mobile breakpoints\n- Add favicon and update title to \"Njuka King\"\n- Remove CPU mode from landing page, move game selection and sign up/in above fold\n- Add gambling/deposit tutorial step before tutorial completion\n- Auto-sync playerName from Firestore username, remove manual name input\n- Create profile page with full name, username, wallet balance, phone\n- Add Profile button to bottom menu bar\n- Fix auth race condition: remove premature setLoading\\(false\\) in Firestore\n  effect that caused redirect on page refresh\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix mobile card display, add profile page, restructure landing page, fix refresh redirect\n\n- Fix white cards on mobile portrait: remove broken <picture> webp/avif sources,\n  align card width/height with min-width/min-height in mobile breakpoints\n- Add favicon and update title to \"Njuka King\"\n- Remove CPU mode from landing page, move game selection and sign up/in above fold\n- Add gambling/deposit tutorial step before tutorial completion\n- Auto-sync playerName from Firestore username, remove manual name input\n- Create profile page with full name, username, wallet balance, phone\n- Add Profile button to bottom menu bar\n- Fix auth race condition: remove premature setLoading\\(false\\) in Firestore\n  effect that caused redirect on page refresh\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd remaining project files \\(tests, config, backend changes\\)\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)"
     ]
   }
 }
