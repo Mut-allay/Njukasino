@@ -67,7 +67,7 @@ export const LandingPage = () => {
         transition={{ duration: 0.6, delay: 0.3, ease: 'easeOut' }}
       >
         <div className="modes-header">
-          <h2>Choose Your Adventure</h2>
+          <h2>Play. Win. Cash Out.</h2>
         </div>
 
         <div className="game-modes-grid">

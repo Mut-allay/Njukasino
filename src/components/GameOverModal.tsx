@@ -28,7 +28,7 @@ const SimpleCard: React.FC<{ value: string; suit: string; highlight?: boolean }>
 export interface GameOverModalProps {
   isOpen: boolean
   onClose: () => void
-  winner: string
+  winner: string | null
   winnerHand?: Array<{ value: string; suit: string }>
   onNewGame: () => void
   winAmount?: string | number
@@ -46,9 +46,11 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   houseCut,
   winnerAmount
 }) => {
-  // Trigger confetti when modal opens
+  const isAllForfeit = !winner || (typeof winner === 'string' && winner.trim() === '')
+
+  // Trigger confetti when modal opens (only when there is a winner)
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !isAllForfeit) {
       // Fire confetti immediately
       const duration = 3000
       const animationEnd = Date.now() + duration
@@ -83,7 +85,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
 
       return () => clearInterval(interval)
     }
-  }, [isOpen])
+  }, [isOpen, isAllForfeit])
 
   const handleNewGame = () => {
     onNewGame()
@@ -96,6 +98,10 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
       : winAmount 
     : null
 
+  const announcementMessage = isAllForfeit
+    ? 'Game over. All players forfeited.'
+    : `Game over! ${winner} wins!${formattedWinAmount ? ` Prize: ${formattedWinAmount}` : ''}`
+
   return (
     <Modal
       isOpen={isOpen}
@@ -105,18 +111,26 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
       className="game-over-modal"
       contentClassName="game-over-content"
       announceOnOpen={true}
-      announcementMessage={`Game over! ${winner} wins!${formattedWinAmount ? ` Prize: ${formattedWinAmount}` : ''}`}
+      announcementMessage={announcementMessage}
       data-testid="game-over-modal"
     >
-      <div className="game-over-message">
-        {/* Winner Avatar/Icon */}
-        <div className="winner-icon" aria-hidden="true">🏆</div>
-        
-        {/* Winner Name */}
-        <h2 className="winner-name">{winner} Wins!</h2>
-        
-        {/* Win Amount */}
-        {formattedWinAmount && (
+      <div className="game-over-message" data-testid="game-over-message">
+        {isAllForfeit ? (
+          <>
+            <div className="winner-icon" aria-hidden="true">🚪</div>
+            <h2 className="winner-name">All players forfeited</h2>
+            <p className="forfeit-explanation">The pot has been transferred to the house. No refunds.</p>
+          </>
+        ) : (
+          <>
+            {/* Winner Avatar/Icon */}
+            <div className="winner-icon" aria-hidden="true">🏆</div>
+            
+            {/* Winner Name */}
+            <h2 className="winner-name">{winner} Wins!</h2>
+            
+            {/* Win Amount */}
+            {formattedWinAmount && (
           <div className="win-amount-container">
             <div className="win-amount" aria-label={`Prize: ${formattedWinAmount}`}>
               {formattedWinAmount}
@@ -140,25 +154,27 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           </div>
         )}
         
-        {/* Winning Hand */}
-        {winnerHand && winnerHand.length > 0 && (
-          <div className="winning-hand-section">
-            <h4>Winning Hand</h4>
-            <div 
-              className="winning-hand" 
-              role="img" 
-              aria-label={`Winning hand: ${winnerHand.map(card => `${card.value} of ${card.suit}`).join(', ')}`}
-            >
-              {winnerHand.map((card, i) => (
-                <SimpleCard
-                  key={`winner-${i}`}
-                  value={card.value}
-                  suit={card.suit}
-                  highlight={true}
-                />
-              ))}
-            </div>
-          </div>
+            {/* Winning Hand */}
+            {winnerHand && winnerHand.length > 0 && (
+              <div className="winning-hand-section">
+                <h4>Winning Hand</h4>
+                <div 
+                  className="winning-hand" 
+                  role="img" 
+                  aria-label={`Winning hand: ${winnerHand.map(card => `${card.value} of ${card.suit}`).join(', ')}`}
+                >
+                  {winnerHand.map((card, i) => (
+                    <SimpleCard
+                      key={`winner-${i}`}
+                      value={card.value}
+                      suit={card.suit}
+                      highlight={true}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
       

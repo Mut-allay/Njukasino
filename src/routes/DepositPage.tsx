@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { DepositService } from '../services/depositService';
-import { CreditCard, Phone, DollarSign, Lock } from 'lucide-react';
+import { CreditCard, Phone, Lock } from 'lucide-react';
 import './DepositPage.css';
 
 const depositService = new DepositService();
@@ -28,12 +28,12 @@ export const DepositPage = () => {
   const isValidPhone = (p: string) => /^\+260\d{9}$/.test(p) || /^0\d{9}$/.test(p);
   const isValidAmount = (a: string) => {
     const num = parseFloat(a);
-    return !isNaN(num) && num > 0 && num <= 500000;
+    return !isNaN(num) && num > 0 && num <= 20000;
   };
 
   const handleInitiateDeposit = async () => {
     if (!amount || !isValidAmount(amount)) {
-      setError('Please enter an amount between K1 and K500,000');
+      setError('Please enter an amount between K1 and K20,000');
       return;
     }
     if (!phone || !isValidPhone(phone)) {
@@ -109,21 +109,21 @@ export const DepositPage = () => {
             <div className="form-group">
               <label>Amount (Zambian Kwacha)</label>
               <div className="input-wrapper">
-                <DollarSign size={20} className="input-icon" />
+              <span className="currency">K</span>
                 <input
                   type="number"
-                  placeholder="Enter amount (K1 - K500,000)"
+                  placeholder="Enter amount (K1 - K20.000)"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   disabled={loading}
                   min="1"
-                  max="500000"
+                  max="20000"
                   className="form-input"
                 />
-                <span className="currency">K</span>
+                {/* <span className="currency">K</span> */}
               </div>
               <div className="quick-amounts">
-                {[10000, 25000, 50000, 100000].map((quick) => (
+                {[2, 50, 500, 1000].map((quick) => (
                   <button
                     key={quick}
                     className="quick-amount-btn"

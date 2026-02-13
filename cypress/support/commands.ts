@@ -23,17 +23,25 @@ declare global {
        * @example cy.joinLobbyAndStartGame()
        */
       joinLobbyAndStartGame(): Chainable<Element>;
+
+      /**
+       * Custom command to login as admin (for admin dashboard tests)
+       * @example cy.loginAsAdmin()
+       */
+      loginAsAdmin(): Chainable<Element>;
     }
   }
 }
 
 Cypress.Commands.add("loginAsTestUser", () => {
-  cy.visit("/sign-in");
-  cy.get("#phone").type("974464060");
-  cy.get("#password").type("password123");
-  cy.get('button[type="submit"]').click();
-  // Wait for redirect to home
-  cy.url().should("eq", Cypress.config().baseUrl + "/");
+  cy.visit("/sign-in", { timeout: 60000 });
+  // Wait for sign-in form to be ready (avoids "element not found" on slow load/hydration)
+  cy.url({ timeout: 15000 }).should("include", "/sign-in");
+  cy.get("#phone", { timeout: 15000 }).should("be.visible").clear().type("974464060");
+  cy.get("#password", { timeout: 5000 }).should("be.visible").clear().type("password123");
+  cy.get('button[type="submit"]').should("be.visible").click();
+  // Wait for successful login redirect
+  cy.url({ timeout: 15000 }).should("eq", Cypress.config().baseUrl + "/");
 });
 
 Cypress.Commands.add("signupAndLoginTestUser", () => {
@@ -42,29 +50,30 @@ Cypress.Commands.add("signupAndLoginTestUser", () => {
   const password = "password123";
   const username = `Test_${randomSuffix}`;
 
-  cy.visit("/sign-up");
-  cy.get("#phone").type(phone);
-  cy.get("#password").type(password);
-  cy.get("#confirmPassword").type(password);
-  cy.get('button[type="submit"]').click();
+  cy.visit("/sign-up", { timeout: 60000 });
+  cy.url({ timeout: 15000 }).should("include", "/sign-up");
+  cy.get("#phone", { timeout: 15000 }).should("be.visible").clear().type(phone);
+  cy.get("#password", { timeout: 5000 }).should("be.visible").clear().type(password);
+  cy.get("#confirmPassword", { timeout: 5000 }).should("be.visible").clear().type(password);
+  cy.get('button[type="submit"]').should("be.visible").click();
 
   // Wait for onboarding
-  cy.url().should("include", "/onboarding");
+  cy.url({ timeout: 15000 }).should("include", "/onboarding");
 
   // Step 1: Username
-  cy.get("#username").type(username);
+  cy.get("#username", { timeout: 10000 }).should("be.visible").type(username);
   cy.get(".btn-primary").click();
 
   // Step 2: 18+
-  cy.get(".checkbox-input").check();
+  cy.get(".checkbox-input", { timeout: 5000 }).check();
   cy.get(".btn-primary").click();
 
   // Step 3: Terms
-  cy.get(".checkbox-input").check();
+  cy.get(".checkbox-input", { timeout: 5000 }).check();
   cy.get(".btn-primary").click();
 
   // Final redirect
-  cy.url().should("eq", Cypress.config().baseUrl + "/");
+  cy.url({ timeout: 15000 }).should("eq", Cypress.config().baseUrl + "/");
 });
 
 Cypress.Commands.add("joinLobbyAndStartGame", () => {
@@ -80,4 +89,15 @@ Cypress.Commands.add("joinLobbyAndStartGame", () => {
   // Note: Starting the game usually requires multiple players.
   // For this test, we might only be able to test the lobby persistence
   // unless we mock the "start" condition or have a backend way to force start.
+});
+
+Cypress.Commands.add("loginAsAdmin", () => {
+  cy.visit("/sign-in", { timeout: 60000 });
+  cy.url({ timeout: 15000 }).should("include", "/sign-in");
+  cy.get("#phone", { timeout: 15000 }).should("be.visible").clear().type("974464060");
+  cy.get("#password", { timeout: 5000 }).should("be.visible").clear().type("password123");
+  cy.get('button[type="submit"]').should("be.visible").click();
+  cy.url({ timeout: 15000 }).should("eq", Cypress.config().baseUrl + "/");
+  // Admin tests require the test user to have is_admin in Firestore
+  // If not, tests that visit /admin will redirect to home
 });

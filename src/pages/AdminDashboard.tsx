@@ -90,7 +90,7 @@ export const AdminDashboard = () => {
             {loading ? (
               <Loader2 size={32} className="stat-spinner" />
             ) : (
-              <div className="stat-value">
+              <div className="stat-value" data-testid="house-balance">
                 <span className="currency">K</span>
                 <span className="amount">{houseBalance?.toLocaleString() ?? '0'}</span>
               </div>

@@ -1226,3 +1226,43 @@
     top: 130%;
   }
 }
+
+/* Portrait (e.g. 375×812): ensure bottom player card faces are visible (not white/blank) */
+@media (max-width: 430px) {
+  .player-seat.bottom .card {
+    overflow: visible;
+    background: linear-gradient(135deg, #ffffff, #f5f5f5);
+    min-height: 72px;
+  }
+  .player-seat.bottom .card .card-inner {
+    visibility: visible !important;
+    opacity: 1 !important;
+    overflow: visible;
+    display: flex;
+    min-height: 100%;
+  }
+  .player-seat.bottom .card .card-value,
+  .player-seat.bottom .card .card-suit {
+    visibility: visible !important;
+    opacity: 1 !important;
+    font-size: clamp(0.7em, 4vw, 0.9em);
+  }
+  .player-seat.bottom .card.red .card-value,
+  .player-seat.bottom .card.red .card-suit {
+    color: #d32f2f;
+  }
+  .player-seat.bottom .card.black .card-value,
+  .player-seat.bottom .card.black .card-suit {
+    color: #222;
+  }
+  .player-seat.bottom .card .card-face-image {
+    visibility: visible !important;
+    opacity: 1 !important;
+    object-fit: contain;
+    max-width: 100%;
+    max-height: 100%;
+  }
+  .player-seat.bottom .hand {
+    overflow: visible;
+  }
+}
