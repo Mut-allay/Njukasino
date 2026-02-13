@@ -72,7 +72,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!currentUser?.uid) {
       setUserData(null);
-      setLoading(false);
+      // Don't set loading=false here — Effect 1 (onAuthStateChanged) handles
+      // the no-user case. Setting it here causes a race condition where loading
+      // becomes false before Firestore data arrives, triggering premature redirects.
       return;
     }
 

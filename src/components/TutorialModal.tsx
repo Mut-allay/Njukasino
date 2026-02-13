@@ -49,8 +49,13 @@ const TUTORIAL_STEPS = [
     buttonText: "Final Tip"
   },
   {
+    title: "Real Money, Real Wins!",
+    content: "Njuka King is a real money card game. Deposit funds into your wallet and play against real players for cash prizes. Head to the Wallet page to add funds when you're ready to compete!",
+    buttonText: "Got It"
+  },
+  {
     title: "Tutorial Complete!",
-    content: "You're ready to play! Try to beat the CPU or join a multiplayer room.",
+    content: "You're ready to play! Head to Multiplayer to challenge other players for real money.",
     buttonText: "Finish Tutorial"
   }
 ];

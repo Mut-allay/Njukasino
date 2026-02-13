@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Settings, Info, Home, Volume2, VolumeX, BookOpen, X, GraduationCap, Menu, ChevronDown } from 'lucide-react';
+import { Settings, Info, Home, Volume2, VolumeX, BookOpen, X, GraduationCap, Menu, ChevronDown, User } from 'lucide-react';
 import { useGame } from '../contexts/GameContext';
 import { hapticFeedback } from '../utils/haptics';
 
@@ -145,7 +145,7 @@ export const EnhancedBottomMenu = ({
       {/* Main Menu Bar - hidden when collapsed */}
       {!menuCollapsed && (
         <div className="main-menu-bar">
-          <button 
+          <button
             onClick={() => handleNav('/')}
             className="menu-tab"
           >
@@ -153,7 +153,15 @@ export const EnhancedBottomMenu = ({
             <span>Home</span>
           </button>
 
-          <button 
+          <button
+            onClick={() => handleNav('/profile')}
+            className="menu-tab"
+          >
+            <User size={22} />
+            <span>Profile</span>
+          </button>
+
+          <button
             onClick={toggleSettings}
             className={`menu-tab ${settingsExpanded ? 'active' : ''}`}
           >

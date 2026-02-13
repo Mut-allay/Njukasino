@@ -2537,6 +2537,17 @@ button:disabled {
   opacity: 0.9;
 }
 
+.username-display {
+  color: #f8d56b;
+  font-size: 1.1em;
+  text-align: center;
+  margin: 0 0 0.5rem 0;
+}
+
+.username-display strong {
+  color: #ffd700;
+}
+
 .new-game-form {
   background: rgba(10, 30, 40, 0.9);
   border: 2px solid #f8d56b;
@@ -4195,6 +4206,11 @@ button:disabled {
   padding: 40px 20px 60px;
 }
 
+.landing-hero-section.landing-hero-compact {
+  min-height: auto;
+  padding: 40px 20px 20px;
+}
+
 .hero-background {
   position: absolute;
   top: 0;
@@ -4344,7 +4360,7 @@ button:disabled {
 
 @media (min-width: 768px) {
   .game-modes-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 25px;
   }
 }
@@ -4365,7 +4381,7 @@ button:disabled {
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   display: flex;
   flex-direction: column;
-  min-height: 280px;
+  min-height: 220px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
@@ -4592,6 +4608,41 @@ button:disabled {
   height: 18px;
 }
 
+/* Inline CTA */
+.landing-inline-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 30px;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.landing-inline-cta .premium-cta-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.secondary-cta-btn {
+  background: transparent;
+  border: 1px solid rgba(248, 213, 107, 0.3);
+  color: #f8d56b;
+  padding: 14px 30px;
+  border-radius: 12px;
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+.secondary-cta-btn:hover {
+  border-color: #f8d56b;
+  background: rgba(248, 213, 107, 0.1);
+}
+
 /* Footer */
 .landing-footer {
   position: relative;
@@ -4708,24 +4759,25 @@ button:disabled {
     padding: 30px 15px 50px;
   }
 
+  .landing-hero-section.landing-hero-compact {
+    min-height: auto;
+    padding: 25px 15px 10px;
+  }
+
   .landing-game-modes {
-    padding: 30px 15px;
+    padding: 15px 15px;
   }
 
   .modes-header {
-    margin-bottom: 30px;
+    margin-bottom: 15px;
   }
 
-  .landing-cta-section {
-    padding: 40px 15px;
+  .landing-game-card {
+    min-height: 200px;
   }
 
-  .cta-content h2 {
-    margin-bottom: 12px;
-  }
-
-  .cta-content p {
-    margin-bottom: 20px;
+  .landing-inline-cta {
+    margin-top: 20px;
   }
 
   .landing-footer {
@@ -4743,6 +4795,6 @@ button:disabled {
 
   .card-inner {
     padding: 25px 20px;
-    min-height: 240px;
+    min-height: 200px;
   }
 }

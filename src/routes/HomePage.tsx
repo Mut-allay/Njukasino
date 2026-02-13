@@ -5,7 +5,7 @@ import { useGame } from '../contexts/GameContext';
 
 export const HomePage = () => {
     const navigate = useNavigate();
-    const { playerName, setPlayerName, startTutorial } = useGame();
+    const { playerName, startTutorial } = useGame();
 
     const handleSelectMode = async (mode: 'multiplayer' | 'tutorial') => {
         if (mode === 'multiplayer') {
@@ -18,9 +18,8 @@ export const HomePage = () => {
         }
     };
 
-    return <HomePageComponent 
-        onSelectMode={handleSelectMode} 
-        playerName={playerName} 
-        setPlayerName={setPlayerName}
+    return <HomePageComponent
+        onSelectMode={handleSelectMode}
+        playerName={playerName}
     />;
 };

@@ -160,17 +160,13 @@ export const Card = React.memo(function Card({
     >
       <div className="card-inner">
         {imageUrl ? (
-          <picture>
-            <source srcSet={imageUrl.replace('.png', '.webp')} type="image/webp" />
-            <source srcSet={imageUrl.replace('.png', '.avif')} type="image/avif" />
-            <img 
-              src={imageUrl}
-              alt={`${value} of ${suit}`}
-              className="card-face-image"
-              loading="lazy"
-              decoding="async"
-            />
-          </picture>
+          <img
+            src={imageUrl}
+            alt={`${value} of ${suit}`}
+            className="card-face-image"
+            loading="lazy"
+            decoding="async"
+          />
         ) : (
           <>
             <span className="card-value">{value}</span>

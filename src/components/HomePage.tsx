@@ -4,10 +4,9 @@ import { hapticFeedback } from '../utils/haptics';
 interface HomePageProps {
   onSelectMode: (mode: 'multiplayer' | 'tutorial') => void;
   playerName: string;
-  setPlayerName: (name: string) => void;
 }
 
-export const HomePage = ({ onSelectMode, playerName, setPlayerName }: HomePageProps) => {
+export const HomePage = ({ onSelectMode, playerName }: HomePageProps) => {
   const handleModeSelection = (mode: 'multiplayer' | 'tutorial') => {
     hapticFeedback('medium');
     onSelectMode(mode);
@@ -19,36 +18,20 @@ export const HomePage = ({ onSelectMode, playerName, setPlayerName }: HomePagePr
         <div className="header-top">
           <h2>Welcome to Njuka King!</h2>
         </div>
+        <p className="username-display">
+          Playing as: <strong>{playerName}</strong>
+        </p>
         <div className="live-indicator">
           <span className="dot"></span>
           <span>124 Players Online</span>
         </div>
       </div>
-      
+
       <div className="new-game-form">
-        <div className="input-group">
-          <input
-            type="text"
-            value={playerName}
-            onChange={(e) => {
-              const name = e.target.value;
-              if (name.length <= 20) {
-                setPlayerName(name);
-              }
-            }}
-            placeholder="Enter your name (2-20 chars)"
-            maxLength={20}
-            required
-            className="premium-input"
-          />
-        </div>
-        
-        
         <div className="game-cards">
           <button
             className="game-card multiplayer-card"
             onClick={() => handleModeSelection('multiplayer')}
-            disabled={!playerName.trim()}
           >
             <div className="card-content">
               <div className="icon-box">
@@ -68,7 +51,6 @@ export const HomePage = ({ onSelectMode, playerName, setPlayerName }: HomePagePr
           <button
             className="game-card tutorial-card"
             onClick={() => handleModeSelection('tutorial')}
-            disabled={!playerName.trim()}
           >
             <div className="card-content">
               <div className="icon-box">

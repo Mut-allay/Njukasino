@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Howl, Howler } from 'howler';
 import './App.css';
-import { GameProvider } from './contexts/GameContext';
+import { GameProvider, useGame } from './contexts/GameContext';
 import { useAuth } from './contexts/AuthContext';
 import { EnhancedBottomMenu } from './components/EnhancedBottomMenu';
 import { WalletDisplay } from './components/WalletDisplay';
@@ -22,6 +22,7 @@ const DepositPage = lazy(() => import('./routes/DepositPage').then(module => ({ 
 const WalletPage = lazy(() => import('./pages/WalletPage').then(module => ({ default: module.WalletPage })));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
 const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage').then(module => ({ default: module.AdminLoginPage })));
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then(module => ({ default: module.ProfilePage })));
 
 // 🎵 SOUND MANAGER HOOK - Handles all game audio
 const useSoundManager = () => {
@@ -234,6 +235,14 @@ interface AppContentProps {
 // Separate component to safely use useGame and useAuth contexts
 function AppContent({ soundsEnabled, toggleSounds, playSound }: AppContentProps) {
   const { currentUser, loading, logout, userData } = useAuth();
+  const { setPlayerName } = useGame();
+
+  // Auto-sync playerName from Firestore username
+  useEffect(() => {
+    if (userData?.username) {
+      setPlayerName(userData.username);
+    }
+  }, [userData?.username, setPlayerName]);
 
   const handleLogout = async () => {
     try {
@@ -285,6 +294,7 @@ function AppContent({ soundsEnabled, toggleSounds, playSound }: AppContentProps)
           <Route path="/home" element={currentUser && userData?.onboarded ? <HomePage /> : <Navigate to="/" />} />
           <Route path="/deposit" element={currentUser && userData?.onboarded ? <DepositPage /> : <Navigate to="/sign-in" />} />
           <Route path="/wallet" element={currentUser && userData?.onboarded ? <WalletPage /> : <Navigate to="/sign-in" />} />
+          <Route path="/profile" element={currentUser && userData?.onboarded ? <ProfilePage /> : <Navigate to="/sign-in" />} />
           <Route path="/multiplayer" element={currentUser && userData?.onboarded ? <MultiplayerLobbyPage /> : <Navigate to="/sign-in" />} />
           <Route path="/lobby/:lobbyId" element={currentUser && userData?.onboarded ? <GameRoomPage playSound={playSound} /> : <Navigate to="/sign-in" />} />
           <Route path="/game/:gameId" element={currentUser && userData?.onboarded ? <GameRoomPage playSound={playSound} /> : <Navigate to="/sign-in" />} />
